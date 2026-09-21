@@ -1,15 +1,10 @@
+<p align="center"><img src="assets/omasum-mark.svg" width="64" alt=""></p>
+
 # Omasum
 
 Omasum is a calculator for Omarchy that works like a notepad: summon it with a key, type lines of plain text, and each line's result appears beside it as you type.
 
-```
-rent = 1450                     1 450
-utils = 190   # agreed 12 Feb     190
-total = rent + utils            1 640
-total * 12                     19 680
-20 km to miles             12.4274 mi
-$120 in eur                104.71 EUR
-```
+<p align="center"><img src="assets/screenshot.png" width="820" alt="Omasum on the Ristretto theme: a trip budget on the left, results in a column on the right"></p>
 
 It is an [Omarchy 4](https://omarchy.org) shell plugin: QML for the surface, plain JavaScript for the engine, running inside the shell the desktop already keeps alive. No daemon, no binary, no build step. Colours come from the active Omarchy theme and repaint when you switch themes.
 
@@ -28,6 +23,22 @@ o.bind('SUPER + SHIFT + Q', 'Omasum', 'omarchy-shell shell toggle dev.nur.omasum
 ```
 
 `SUPER + SHIFT + Q` is free in the stock Omarchy 4 bindings (the stock calculator is on `SUPER + CTRL + Q`). Pick another combination if it collides with one of yours.
+
+Or, from the [Omarchy plugin marketplace](https://plugins.omarchy.org): `omarchy plugin add https://github.com/nursahketene/omasum.git --enable`, then add the bind.
+
+### Removing it
+
+```bash
+omarchy plugin remove dev.nur.omasum
+```
+
+That deletes the plugin directory and its entry in `~/.config/omarchy/shell.json`. Remove the `o.bind` line from `bindings.lua` yourself. Your sheet stays at `~/.local/state/omasum/sheet.calc` and the rates cache at `~/.cache/omasum/rates.json`; delete those two directories if you want nothing left behind.
+
+### Dependencies
+
+Everything it needs ships with Omarchy 4: the shell (Quickshell 0.3+, Qt 6), `wl-copy` and `wl-paste` from `wl-clipboard` for the clipboard, and `mkdir` for its two directories. Currency conversion makes one HTTPS request a day to `api.frankfurter.dev` for ECB reference rates; nothing else touches the network, and the plugin works offline without currency conversion. No API keys, no other services, no packages to install.
+
+The plugin writes only to its own two directories above. It never edits your Hyprland, shell or theme configuration.
 
 ## Using it
 

@@ -11,7 +11,7 @@ import "engine.js" as Engine
 //
 // TextEdit has no lineHeight property, so the 30px row comes from a block
 // format instead: the editor runs in RichText mode where every line is a
-// <div style="line-height:30px; white-space:pre">. Enter inherits the block
+// <div style="line-height:30px; white-space:pre"> block. Enter inherits the block
 // format, and paste is intercepted so only plain text ever enters the
 // document. The plain text is read back with getText() and never from
 // `text`, which is HTML in this mode.
@@ -64,15 +64,17 @@ Item {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   }
 
-  function lineHtml(line) {
-    return '<div style="line-height:' + rowHeight + 'px; white-space:pre">' + escapeHtml(line) + "</div>"
+  function lineHtml(html) {
+    return '<div style="line-height:' + rowHeight + 'px; white-space:pre">' + html + "</div>"
   }
 
+  // One block, lines separated by <br>: Qt's importer drops an empty <div>,
+  // and a <br> line separator carries the block's line-height just the same.
+  // Both separators come back as "\n" from plainText().
   function toHtml(plain) {
     var lines = String(plain).split("\n")
-    var out = ""
-    for (var i = 0; i < lines.length; i++) out += lineHtml(lines[i])
-    return out
+    for (var i = 0; i < lines.length; i++) lines[i] = escapeHtml(lines[i])
+    return lineHtml(lines.join("<br>"))
   }
 
   // Block and line separators come back from getText as U+2029 / U+2028.
@@ -102,7 +104,7 @@ Item {
   }
 
   function insertPlain(position, value) {
-    var s = String(value || "").replace(/\r\n?/g, "\n")
+    var s = String(value || "").replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ")
     if (!s) return
     editor.insert(position, toHtml(s))
   }
