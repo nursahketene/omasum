@@ -53,6 +53,7 @@ Item {
     { title: "Keys", note: "", rows: [
       ["Enter", "new line"],
       ["Escape", "hide the sheet, keep everything"],
+      ["Ctrl+?", "this reference"],
       ["Ctrl+Z", "undo, including clean sheet"],
       ["click a result", "copy the bare number"]
     ]}

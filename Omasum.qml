@@ -251,6 +251,14 @@ Item {
           if (root.helpOpen) { root.helpOpen = false; sheet.focusEditor() }
           else root.dismiss()
           event.accepted = true
+          return
+        }
+        // Ctrl+? toggles the syntax help; Ctrl+/ too, for layouts where
+        // ? is not Shift+/.
+        var ctrl = event.modifiers & Qt.ControlModifier
+        if (ctrl && (event.key === Qt.Key_Question || event.key === Qt.Key_Slash)) {
+          root.toggleHelp()
+          event.accepted = true
         }
       }
 
@@ -308,6 +316,7 @@ Item {
             BarHint { key: "↵"; label: "new line" }
             BarHint { key: "#"; label: "comment" }
             BarHint { key: ""; label: "click a result to copy" }
+            BarHint { key: "ctrl ?"; label: "" }
 
             Text {
               id: helpLink
@@ -529,6 +538,7 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
     }
     Text {
+      visible: label !== ""
       text: label
       color: theme.muted
       font.family: theme.uiFamily

@@ -35,7 +35,7 @@ o.bind('SUPER + SHIFT + Q', 'Omasum', 'omarchy-shell shell toggle dev.nur.omasum
 - `name = value` defines a name for every line below it. `ans` and `last` hold the previous result.
 - `#` starts a comment, at the start of a line or after an expression.
 - Click a result to copy the bare number. `Escape` hides the sheet and keeps everything; `clean sheet` in the top bar is the only thing that empties it, and `Ctrl+Z` undoes that too.
-- `? syntax` in the top bar opens the full reference.
+- `? syntax` in the top bar (or `Ctrl+?`) opens the full reference.
 
 Some of what it understands:
 
