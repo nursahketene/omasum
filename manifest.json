@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "dev.nur.omasum",
+  "name": "Omasum",
+  "version": "0.1.0",
+  "author": "Nur Ketene",
+  "license": "MIT",
+  "description": "A keybind-summoned calculator overlay that behaves like a notepad: type lines, results appear beside them",
+  "kinds": ["panel"],
+  "keepLoaded": true,
+  "entryPoints": { "panel": "Omasum.qml" }
+}
