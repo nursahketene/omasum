@@ -11,9 +11,7 @@ It is an [Omarchy 4](https://omarchy.org) shell plugin: QML for the surface, pla
 ## Install
 
 ```bash
-git clone https://github.com/nursahketene/omasum.git ~/.config/omarchy/plugins/dev.nur.omasum
-omarchy plugin validate ~/.config/omarchy/plugins/dev.nur.omasum
-omarchy plugin enable dev.nur.omasum
+omarchy plugin add https://github.com/nursahketene/omasum.git --enable
 ```
 
 Then add the keybind. Omarchy 4 reads Hyprland bindings from **`~/.config/hypr/bindings.lua`** — the old `bindings.conf` is still on disk after the upgrade but is no longer loaded, so paste this into the `.lua` file:
@@ -24,7 +22,20 @@ o.bind('SUPER + SHIFT + Q', 'Omasum', 'omarchy-shell shell toggle dev.nur.omasum
 
 `SUPER + SHIFT + Q` is free in the stock Omarchy 4 bindings (the stock calculator is on `SUPER + CTRL + Q`). Pick another combination if it collides with one of yours.
 
-Or, from the [Omarchy plugin marketplace](https://plugins.omarchy.org): `omarchy plugin add https://github.com/nursahketene/omasum.git --enable`, then add the bind.
+Updates come with `omarchy plugin update dev.nur.omasum`, which shows you the diff before applying it.
+
+<details>
+<summary>Installing by hand</summary>
+
+The repo is the plugin, so a clone (or a symlink to a checkout) in the plugins directory works too:
+
+```bash
+git clone https://github.com/nursahketene/omasum.git ~/.config/omarchy/plugins/dev.nur.omasum
+omarchy plugin validate ~/.config/omarchy/plugins/dev.nur.omasum
+omarchy plugin enable dev.nur.omasum
+```
+
+</details>
 
 ### Removing it
 
