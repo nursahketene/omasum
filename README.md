@@ -24,18 +24,7 @@ o.bind('SUPER + SHIFT + Q', 'Omasum', 'omarchy-shell shell toggle dev.nur.omasum
 
 Updates come with `omarchy plugin update dev.nur.omasum`, which shows you the diff before applying it.
 
-<details>
-<summary>Installing by hand</summary>
-
-The repo is the plugin, so a clone (or a symlink to a checkout) in the plugins directory works too:
-
-```bash
-git clone https://github.com/nursahketene/omasum.git ~/.config/omarchy/plugins/dev.nur.omasum
-omarchy plugin validate ~/.config/omarchy/plugins/dev.nur.omasum
-omarchy plugin enable dev.nur.omasum
-```
-
-</details>
+`omarchy plugin add` puts the repository at `~/.config/omarchy/plugins/dev.nur.omasum` — the directory is named after the plugin id. A checkout or symlink of your own at that path works the same way; run `omarchy plugin validate` on it, then `omarchy plugin enable dev.nur.omasum`.
 
 ### Removing it
 
