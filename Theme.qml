@@ -74,7 +74,9 @@ QtObject {
   readonly property int resultPadX: Style.space(15)
   readonly property int textSize: Style.fontPx(17 / 12)
   readonly property int barTextSize: Style.fontPx(11 / 12)
-  readonly property int radius: Style.cornerRadius > 0 ? Style.cornerRadius : Style.space(14)
+  // Corner rounding is the system's call: Style.cornerRadius mirrors
+  // Hyprland's decoration:rounding, zero included.
+  readonly property int radius: Style.cornerRadius
   readonly property int borderWidth: Math.max(1, Style.space(2))
 
   readonly property string monoFamily: Style.font.family

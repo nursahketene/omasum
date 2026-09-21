@@ -286,6 +286,10 @@ Item {
           anchors.margins: theme.borderWidth
           height: theme.barHeight
           color: theme.surface
+          // Follow the card's rounding on the outer corners so the bar
+          // never pokes a square corner through a rounded border.
+          topLeftRadius: Math.max(0, theme.radius - theme.borderWidth)
+          topRightRadius: Math.max(0, theme.radius - theme.borderWidth)
 
           Rectangle {
             anchors.bottom: parent.bottom
@@ -437,6 +441,8 @@ Item {
           anchors.margins: theme.borderWidth
           height: theme.barHeight
           color: theme.surface
+          bottomLeftRadius: Math.max(0, theme.radius - theme.borderWidth)
+          bottomRightRadius: Math.max(0, theme.radius - theme.borderWidth)
 
           Rectangle {
             anchors.top: parent.top

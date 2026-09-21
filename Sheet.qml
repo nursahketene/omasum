@@ -280,18 +280,24 @@ Item {
           text: sheet.lineHtml("")
           selectByMouse: true
           persistentSelection: false
-          cursorDelegate: Rectangle {
+          // The editor sizes the delegate to the full line; the caret
+          // itself is drawn the height of the text, centred on it.
+          cursorDelegate: Item {
             width: Math.max(1, Style.space(2))
-            height: editor.cursorRectangle.height
-            color: sheet.theme.accent
             visible: editor.activeFocus
-            SequentialAnimation on opacity {
-              running: editor.activeFocus
-              loops: Animation.Infinite
-              PropertyAction { value: 1 }
-              PauseAnimation { duration: 560 }
-              PropertyAction { value: 0 }
-              PauseAnimation { duration: 400 }
+            Rectangle {
+              width: parent.width
+              height: sheet.theme.textSize + Style.space(2)
+              anchors.verticalCenter: parent.verticalCenter
+              color: sheet.theme.accent
+              SequentialAnimation on opacity {
+                running: editor.activeFocus
+                loops: Animation.Infinite
+                PropertyAction { value: 1 }
+                PauseAnimation { duration: 560 }
+                PropertyAction { value: 0 }
+                PauseAnimation { duration: 400 }
+              }
             }
           }
 
