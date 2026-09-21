@@ -43,6 +43,17 @@ Item {
   readonly property int resultWidth: theme.resultWidth
   readonly property int editorWidth: width - resultWidth
 
+  // The RichText editor lays the natural line at the bottom of its
+  // fixed-height block; a Text with a fixed lineHeight lays it at the top.
+  // Every painted layer takes this inset so it lands where the editor's
+  // (transparent) glyphs are.
+  FontMetrics {
+    id: metrics
+    font.family: sheet.theme.monoFamily
+    font.pixelSize: sheet.theme.textSize
+  }
+  readonly property int lineInset: Math.max(0, rowHeight - Math.ceil(metrics.height))
+
   function focusEditor() {
     editor.forceActiveFocus()
   }
@@ -240,6 +251,7 @@ Item {
           visible: sheet.empty
           x: sheet.theme.padX
           height: sheet.rowHeight
+          topPadding: sheet.lineInset
           lineHeight: sheet.rowHeight
           lineHeightMode: Text.FixedHeight
           text: "# a scratch sheet — every line is live"
@@ -255,6 +267,7 @@ Item {
           anchors.fill: parent
           leftPadding: sheet.theme.padX
           rightPadding: sheet.theme.padX
+          topPadding: sheet.lineInset
           textFormat: Text.StyledText
           text: sheet.markup
           color: sheet.theme.text
@@ -280,10 +293,11 @@ Item {
           text: sheet.lineHtml("")
           selectByMouse: true
           persistentSelection: false
-          // The editor sizes the delegate to the full line; the caret
-          // itself is drawn the height of the text, centred on it.
+          // The editor sizes the delegate to the natural line; the caret
+          // is drawn the height of the text, centred on it.
           cursorDelegate: Item {
             width: Math.max(1, Style.space(2))
+            height: editor.cursorRectangle.height
             visible: editor.activeFocus
             Rectangle {
               width: parent.width
@@ -425,6 +439,7 @@ Item {
             anchors.rightMargin: sheet.theme.resultPadX
             anchors.top: parent.top
             height: sheet.rowHeight
+            topPadding: sheet.lineInset
             lineHeight: sheet.rowHeight
             lineHeightMode: Text.FixedHeight
             width: Math.min(implicitWidth, sheet.resultWidth - sheet.theme.resultPadX * 2 - (rateTag.visible ? rateTag.width + Style.space(6) : 0))
