@@ -128,8 +128,9 @@ Item {
   //
   // Euro-based daily rates from the ECB via Frankfurter. Cached to
   // ~/.cache/omasum/rates.json; refreshed when older than 24 hours on load
-  // and on open, never on a keystroke. Fetched asynchronously — a blocking
-  // fetch in the shell process would freeze the bar and every menu.
+  // and on open, never on a keystroke. Fetched by a curl subprocess — a
+  // blocking fetch in the shell process would freeze the bar and every
+  // menu, and curl gives a hard byte limit that XMLHttpRequest does not.
 
   property var rates: null
   property bool fetchingRates: false
@@ -183,39 +184,85 @@ Item {
     fetchRates()
   }
 
-  function fetchRates() {
-    fetchingRates = true
-    lastFetchAttempt = Date.now()
-    var xhr = new XMLHttpRequest()
-    xhr.timeout = 15000
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState !== XMLHttpRequest.DONE) return
+  // The response is capped at 64 KiB on the producer side: curl aborts the
+  // transfer past --max-filesize whether or not the server sent a truthful
+  // Content-Length, so a faulty or hostile endpoint cannot stream an
+  // unbounded body into the shell process. A real response is under 1 KiB.
+  // The collector is checked against the same cap before parsing, and only
+  // a complete, successful, in-limit body is parsed and cached.
+  readonly property int ratesMaxBytes: 65536
+
+  Process {
+    id: ratesFetch
+    command: [
+      "curl", "--silent", "--show-error", "--fail",
+      "--proto", "=https",
+      "--max-time", "15", "--max-filesize", String(root.ratesMaxBytes),
+      root.ratesUrl
+    ]
+    stdout: StdioCollector {
+      id: ratesOut
+      waitForEnd: true
+    }
+    stderr: StdioCollector {
+      id: ratesErr
+      waitForEnd: true
+    }
+    onExited: function(code) {
       root.fetchingRates = false
-      if (xhr.status !== 200) {
-        console.warn("omasum: rates fetch failed with status " + xhr.status)
+      if (code !== 0) {
+        var why = String(ratesErr.text || "").replace(/\s+$/, "")
+        console.warn("omasum: rates fetch failed (curl exit " + code + ")" + (why ? ": " + why : ""))
         return
       }
-      try {
-        var data = JSON.parse(xhr.responseText)
-        if (!data || typeof data.rates !== "object") return
-        var cache = {
-          fetched: new Date().toISOString(),
-          base: data.base || "EUR",
-          date: data.date || "",
-          rates: data.rates
-        }
-        cache.rates.EUR = 1
-        ratesFile.setText(JSON.stringify(cache, null, 2) + "\n")
-        root.rates = {
-          base: cache.base, date: cache.date, fetched: cache.fetched,
-          rates: cache.rates, stale: false, age: "from today"
-        }
-      } catch (e) {
-        console.warn("omasum: rates response was not JSON")
+      root.applyFetchedRates(ratesOut.text)
+    }
+  }
+
+  function fetchRates() {
+    if (ratesFetch.running) return
+    fetchingRates = true
+    lastFetchAttempt = Date.now()
+    ratesFetch.running = true
+  }
+
+  function applyFetchedRates(body) {
+    var raw = String(body || "")
+    if (raw.length === 0 || raw.length > ratesMaxBytes) {
+      console.warn("omasum: rates response rejected (" + raw.length + " bytes)")
+      return
+    }
+    var data
+    try {
+      data = JSON.parse(raw)
+    } catch (e) {
+      console.warn("omasum: rates response was not JSON")
+      return
+    }
+    if (!data || typeof data.rates !== "object" || data.rates === null) return
+    // Keep only what the engine reads: ISO code -> finite positive number.
+    var rates = {}
+    var count = 0
+    for (var code in data.rates) {
+      var v = data.rates[code]
+      if (/^[A-Z]{3}$/.test(code) && typeof v === "number" && isFinite(v) && v > 0) {
+        rates[code] = v
+        count++
       }
     }
-    xhr.open("GET", ratesUrl)
-    xhr.send()
+    if (count === 0) return
+    rates.EUR = 1
+    var cache = {
+      fetched: new Date().toISOString(),
+      base: "EUR",
+      date: typeof data.date === "string" ? data.date.slice(0, 10) : "",
+      rates: rates
+    }
+    ratesFile.setText(JSON.stringify(cache, null, 2) + "\n")
+    root.rates = {
+      base: cache.base, date: cache.date, fetched: cache.fetched,
+      rates: cache.rates, stale: false, age: "from today"
+    }
   }
 
   // ------------------------------------------------------------ window

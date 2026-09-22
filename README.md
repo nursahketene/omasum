@@ -36,7 +36,7 @@ That deletes the plugin directory and its entry in `~/.config/omarchy/shell.json
 
 ### Dependencies
 
-Everything it needs ships with Omarchy 4: the shell (Quickshell 0.3+, Qt 6), `wl-copy` and `wl-paste` from `wl-clipboard` for the clipboard, and `mkdir` for its two directories. Currency conversion makes one HTTPS request a day to `api.frankfurter.dev` for ECB reference rates; nothing else touches the network, and the plugin works offline without currency conversion. No API keys, no other services, no packages to install.
+Everything it needs ships with Omarchy 4: the shell (Quickshell 0.3+, Qt 6), `wl-copy` and `wl-paste` from `wl-clipboard` for the clipboard, `curl` for the rates, and `mkdir` for its two directories. Currency conversion makes one HTTPS request a day to `api.frankfurter.dev` for ECB reference rates — via `curl` with a 15-second and 64 KiB limit, HTTPS only, no redirects; the response is validated before anything is cached. Nothing else touches the network, and the plugin works offline without currency conversion. No API keys, no other services, no packages to install.
 
 The plugin writes only to its own two directories above. It never edits your Hyprland, shell or theme configuration.
 
