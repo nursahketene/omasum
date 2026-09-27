@@ -49,7 +49,7 @@ Item {
       ["255 to hex", "0xFF"],
       ["12 to bin", "0b1100"]
     ]},
-    { title: "Functions", note: "sqrt cbrt abs round floor ceil exp ln log log2 sign sin cos tan asin acos atan min max hypot pow — trig in radians. Constants pi, e, tau, phi.", rows: [] },
+    { title: "Functions", note: "sqrt cbrt abs round floor ceil exp ln log log2 sign sin cos tan asin acos atan min max hypot pow — trig in radians unless given deg. Units stay through abs round floor ceil min max hypot; the rest need plain numbers. Constants pi, e, tau, phi.", rows: [] },
     { title: "Keys", note: "", rows: [
       ["Enter", "new line"],
       ["Escape", "hide the sheet, keep everything"],

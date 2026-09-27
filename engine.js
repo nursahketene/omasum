@@ -76,20 +76,27 @@ var CURRENCY_SYMBOLS = { "€": "eur", "$": "usd", "£": "gbp", "₺": "try", "�
 
 var CONSTANTS = { pi: Math.PI, e: Math.E, tau: Math.PI * 2, phi: (1 + Math.sqrt(5)) / 2 }
 
+// Each function is [arity, implementation, unit rule]:
+//   keep   the result keeps the argument's unit (round(2.6 km) = 3 km)
+//   same   arguments are converted to the first unit seen, which the result keeps
+//   angle  an angle unit is converted to radians, the result is a plain number
+//   plain  any unit is an error, the result is a plain number
+//   drop   the unit is accepted but the result is a plain number
 var FUNCTIONS = {
-  sqrt: [1, Math.sqrt], cbrt: [1, Math.cbrt], abs: [1, Math.abs], round: [1, Math.round],
-  floor: [1, Math.floor], ceil: [1, Math.ceil], exp: [1, Math.exp], ln: [1, Math.log],
-  log: [1, Math.log10], log2: [1, Math.log2], sign: [1, Math.sign],
-  sin: [1, Math.sin], cos: [1, Math.cos], tan: [1, Math.tan],
-  asin: [1, Math.asin], acos: [1, Math.acos], atan: [1, Math.atan],
+  sqrt: [1, Math.sqrt, "plain"], cbrt: [1, Math.cbrt, "plain"], abs: [1, Math.abs, "keep"],
+  round: [1, Math.round, "keep"], floor: [1, Math.floor, "keep"], ceil: [1, Math.ceil, "keep"],
+  exp: [1, Math.exp, "plain"], ln: [1, Math.log, "plain"], log: [1, Math.log10, "plain"],
+  log2: [1, Math.log2, "plain"], sign: [1, Math.sign, "drop"],
+  sin: [1, Math.sin, "angle"], cos: [1, Math.cos, "angle"], tan: [1, Math.tan, "angle"],
+  asin: [1, Math.asin, "plain"], acos: [1, Math.acos, "plain"], atan: [1, Math.atan, "plain"],
   // -1 arity means two or more
-  min: [-1, function() { return Math.min.apply(null, arguments) }],
-  max: [-1, function() { return Math.max.apply(null, arguments) }],
-  hypot: [-1, function() { return Math.hypot.apply(null, arguments) }],
-  pow: [2, Math.pow]
+  min: [-1, function() { return Math.min.apply(null, arguments) }, "same"],
+  max: [-1, function() { return Math.max.apply(null, arguments) }, "same"],
+  hypot: [-1, function() { return Math.hypot.apply(null, arguments) }, "same"],
+  pow: [2, Math.pow, "plain"]
 }
 
-var CONVERSION_WORDS = ["to", "in", "into", "as"]
+var CONVERSION_WORDS =["to", "in", "into", "as"]
 var BASE_WORDS = ["hex", "bin", "oct", "dec"]
 var KEYWORDS = CONVERSION_WORDS.concat(BASE_WORDS, ["of", "percent", "ans", "last"])
 
@@ -400,13 +407,28 @@ Parser.prototype.callFunction = function(name) {
   if (arity === -1 && args.length < 2) throw new EngineError(name + " takes 2 or more arguments")
   if (arity > 0 && args.length !== arity)
     throw new EngineError(name + " takes " + arity + " argument" + (arity === 1 ? "" : "s"))
-  var nums = []
+  var rule = fn[2]
+  var rates = this.ctx.rates
   var unit = null
+  var nums = []
   for (var i = 0; i < args.length; i++) {
-    nums.push(args[i].v)
-    if (!unit && args[i].unit) unit = args[i].unit
+    var a = args[i]
+    if (a.unit) {
+      if (rule === "plain" || (rule === "angle" && unitDimension(a.unit, rates) !== "angle"))
+        throw new EngineError("can't take " + name + " of " + a.unit)
+      if (rule === "angle") a = val(convertUnits(a.v, a.unit, "rad", rates).v, null)
+      else if (!unit) unit = a.unit
+      else if (a.unit !== unit) {
+        if (unitDimension(a.unit, rates) !== unitDimension(unit, rates))
+          throw new EngineError("can't mix " + unit + " and " + a.unit)
+        var conv = convertUnits(a.v, a.unit, unit, rates)
+        if (conv.usedRate) this.ctx.usedRate = true
+        a = val(conv.v, unit)
+      }
+    }
+    nums.push(a.v)
   }
-  return val(fn[1].apply(null, nums), unit)
+  return val(fn[1].apply(null, nums), rule === "keep" || rule === "same" ? unit : null)
 }
 
 // A name resolves in this order: a variable in scope, then ans/last, then a

@@ -61,6 +61,23 @@ test("scope: ans carries the previous unit", () => {
   assert.equal(sheet("hours = 38\nrate = 65 eur\nhours * rate\nans / 3")[3], `823.33${T}EUR`)
 })
 
+test("trig: results drop the angle unit", () => {
+  assert.deepEqual(sheet("a = 30 deg in rad\nsin(a)"), [`0.523599${T}rad`, "0.5"])
+})
+
+test("trig: degrees are converted to radians", () => {
+  assert.deepEqual(sheet("sin(30 deg)\ntan(45 degrees)\ncos(pi rad)"), ["0.5", "1", "-1"])
+})
+
+test("functions: rounding keeps the unit, sign drops it", () => {
+  assert.deepEqual(sheet("round(2.6 km)\nabs(-4 h)\nsign(-3 kg)"), [`3${T}km`, `4${T}h`, "-1"])
+})
+
+test("functions: min, max and hypot convert to the first unit", () => {
+  assert.deepEqual(sheet("min(1 km, 500 m)\nhypot(3 m, 400 cm)\nmax(5, 3 km)"),
+    [`0.5${T}km`, `5${T}m`, `5${T}km`])
+})
+
 const errors = [
   ["hours * rat", "rat is not defined"],
   ["12 km to kg", "can't convert km to kg"],
@@ -68,6 +85,12 @@ const errors = [
   ["240 to eur", "no unit to convert from"],
   ["2 +", "unfinished line"],
   ["(2 + 3", "missing )"],
+  ["sin(3 kg)", "can't take sin of kg"],
+  ["asin(1 rad)", "can't take asin of rad"],
+  ["sqrt(100 eur)", "can't take sqrt of eur"],
+  ["ln(5 kg)", "can't take ln of kg"],
+  ["pow(2 m, 3)", "can't take pow of m"],
+  ["max(2 kg, 3 km)", "can't mix kg and km"],
 ]
 
 for (const [input, message] of errors) {
