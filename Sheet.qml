@@ -457,13 +457,33 @@ Item {
             textFormat: Text.PlainText
           }
 
+          // Hovering a cut-off result or error shows the whole text.
+          Rectangle {
+            visible: valueText.truncated && rowMouse.containsMouse
+            anchors.bottom: valueText.top
+            anchors.bottomMargin: Style.space(4)
+            anchors.right: valueText.right
+            width: fullTip.implicitWidth + Style.space(16)
+            height: fullTip.implicitHeight + Style.space(8)
+            radius: Style.space(4)
+            color: sheet.theme.overlay
+            Text {
+              id: fullTip
+              anchors.centerIn: parent
+              text: valueText.text
+              color: row.valueColor
+              font.family: sheet.theme.monoFamily
+              font.pixelSize: sheet.theme.barTextSize
+              textFormat: Text.PlainText
+            }
+          }
+
           MouseArea {
             id: rowMouse
             anchors.fill: parent
-            enabled: row.hasValue
-            hoverEnabled: row.hasValue
+            hoverEnabled: true
             cursorShape: row.hasValue ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: sheet.copyLine(row.index)
+            onClicked: if (row.hasValue) sheet.copyLine(row.index)
           }
         }
       }

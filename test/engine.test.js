@@ -69,6 +69,11 @@ test("trig: degrees are converted to radians", () => {
   assert.deepEqual(sheet("sin(30 deg)\ntan(45 degrees)\ncos(pi rad)"), ["0.5", "1", "-1"])
 })
 
+test("units: decilitres and long prefixed names", () => {
+  assert.deepEqual(sheet("1 liter to deciliter\n250 millilitres to dl\n500 milligrams to g\n3 decimeters to cm"),
+    [`10${T}dl`, `2.5${T}dl`, `0.5${T}g`, `30${T}cm`])
+})
+
 test("functions: rounding keeps the unit, sign drops it", () => {
   assert.deepEqual(sheet("round(2.6 km)\nabs(-4 h)\nsign(-3 kg)"), [`3${T}km`, `4${T}h`, "-1"])
 })
