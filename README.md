@@ -22,9 +22,16 @@ o.bind('SUPER + SHIFT + Q', 'Omasum', 'omarchy-shell shell toggle dev.nur.omasum
 
 `SUPER + SHIFT + Q` is free in the stock Omarchy 4 bindings (the stock calculator is on `SUPER + CTRL + Q`). Pick another combination if it collides with one of yours.
 
-Updates come with `omarchy plugin update dev.nur.omasum`, which shows you the diff before applying it.
-
 `omarchy plugin add` puts the repository at `~/.config/omarchy/plugins/dev.nur.omasum` — the directory is named after the plugin id. A checkout or symlink of your own at that path works the same way; run `omarchy plugin validate` on it, then `omarchy plugin enable dev.nur.omasum`.
+
+### Updating it
+
+```bash
+omarchy plugin update dev.nur.omasum
+omarchy-restart-shell
+```
+
+The update shows you the diff before applying it. The restart is needed because Omasum stays loaded in the shell, so the old version keeps running until the shell restarts. The bar blinks for a few seconds while it comes back.
 
 ### Removing it
 
