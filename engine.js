@@ -11,23 +11,26 @@
 // are handled separately: the first needs offsets, the second live rates.
 var UNITS = {
   // length, base m
-  mm: ["length", 0.001], cm: ["length", 0.01], dm: ["length", 0.1], m: ["length", 1],
-  km: ["length", 1000], in: ["length", 0.0254], ft: ["length", 0.3048], yd: ["length", 0.9144],
+  nm: ["length", 1e-9], um: ["length", 1e-6], mm: ["length", 0.001], cm: ["length", 0.01], dm: ["length", 0.1], m: ["length", 1],
+  dam: ["length", 10], hm: ["length", 100], km: ["length", 1000], in: ["length", 0.0254], ft: ["length", 0.3048], yd: ["length", 0.9144],
   mi: ["length", 1609.344], nmi: ["length", 1852],
   // mass, base kg
-  mg: ["mass", 1e-6], g: ["mass", 0.001], kg: ["mass", 1], t: ["mass", 1000],
+  ug: ["mass", 1e-9], mg: ["mass", 1e-6], g: ["mass", 0.001], dag: ["mass", 0.01],
+  hg: ["mass", 0.1], kg: ["mass", 1], t: ["mass", 1000],
   oz: ["mass", 0.0283495231], lb: ["mass", 0.45359237], st: ["mass", 6.35029318],
   // volume, base l
-  ml: ["volume", 0.001], cl: ["volume", 0.01], dl: ["volume", 0.1], l: ["volume", 1], gal: ["volume", 3.785411784],
+  ul: ["volume", 1e-6], ml: ["volume", 0.001], cl: ["volume", 0.01], dl: ["volume", 0.1],
+  l: ["volume", 1], hl: ["volume", 100], kl: ["volume", 1000], gal: ["volume", 3.785411784],
   qt: ["volume", 0.946352946], pt: ["volume", 0.473176473], cup: ["volume", 0.2365882365],
   floz: ["volume", 0.0295735296],
   // time, base s
-  ms: ["time", 0.001], s: ["time", 1], min: ["time", 60], h: ["time", 3600], d: ["time", 86400],
+  ns: ["time", 1e-9], us: ["time", 1e-6], ms: ["time", 0.001], s: ["time", 1], min: ["time", 60], h: ["time", 3600], d: ["time", 86400],
   wk: ["time", 604800], mo: ["time", 2629800], yr: ["time", 31557600],
   // data, base byte. Decimal and binary units are both present and distinct.
   bit: ["data", 0.125], byte: ["data", 1], kb: ["data", 1e3], mb: ["data", 1e6], gb: ["data", 1e9],
-  tb: ["data", 1e12], kib: ["data", 1024], mib: ["data", 1048576], gib: ["data", 1073741824],
-  tib: ["data", 1099511627776],
+  tb: ["data", 1e12], pb: ["data", 1e15], kib: ["data", 1024], mib: ["data", 1048576],
+  gib: ["data", 1073741824], tib: ["data", 1099511627776], pib: ["data", 1125899906842624],
+  kbit: ["data", 125], mbit: ["data", 125e3], gbit: ["data", 125e6], tbit: ["data", 125e9],
   // speed, base km/h
   kmh: ["speed", 1], mph: ["speed", 1.609344], kn: ["speed", 1.852],
   // angle, base deg
@@ -43,17 +46,26 @@ var ALIASES = {
   centimetre: "cm", centimetres: "cm", centimeter: "cm", centimeters: "cm",
   millimetre: "mm", millimetres: "mm", millimeter: "mm", millimeters: "mm",
   decimetre: "dm", decimetres: "dm", decimeter: "dm", decimeters: "dm",
+  nanometre: "nm", nanometres: "nm", nanometer: "nm", nanometers: "nm",
+  micrometre: "um", micrometres: "um", micrometer: "um", micrometers: "um", micron: "um", microns: "um",
+  decametre: "dam", decametres: "dam", decameter: "dam", decameters: "dam",
+  hectometre: "hm", hectometres: "hm", hectometer: "hm", hectometers: "hm",
   inch: "in", inches: "in", foot: "ft", feet: "ft", yard: "yd", yards: "yd",
   mile: "mi", miles: "mi",
   gram: "g", grams: "g", kilogram: "kg", kilograms: "kg",
-  milligram: "mg", milligrams: "mg", kilo: "kg", kilos: "kg",
+  milligram: "mg", milligrams: "mg", microgram: "ug", micrograms: "ug", mcg: "ug",
+  decagram: "dag", decagrams: "dag", hectogram: "hg", hectograms: "hg", kilo: "kg", kilos: "kg",
   pound: "lb", pounds: "lb", lbs: "lb", ounce: "oz", ounces: "oz",
   ton: "t", tons: "t", tonne: "t", tonnes: "t", stone: "st",
   litre: "l", litres: "l", liter: "l", liters: "l", gallon: "gal", gallons: "gal",
   millilitre: "ml", millilitres: "ml", milliliter: "ml", milliliters: "ml",
   centilitre: "cl", centilitres: "cl", centiliter: "cl", centiliters: "cl",
   decilitre: "dl", decilitres: "dl", deciliter: "dl", deciliters: "dl",
+  microlitre: "ul", microlitres: "ul", microliter: "ul", microliters: "ul",
+  hectolitre: "hl", hectolitres: "hl", hectoliter: "hl", hectoliters: "hl",
+  kilolitre: "kl", kilolitres: "kl", kiloliter: "kl", kiloliters: "kl",
   pint: "pt", pints: "pt", quart: "qt", quarts: "qt",
+  nanosecond: "ns", nanoseconds: "ns", microsecond: "us", microseconds: "us",
   millisecond: "ms", milliseconds: "ms", second: "s", seconds: "s", sec: "s", secs: "s",
   minute: "min", minutes: "min", mins: "min",
   hour: "h", hours: "h", hr: "h", hrs: "h", day: "d", days: "d", week: "wk", weeks: "wk",
@@ -61,6 +73,10 @@ var ALIASES = {
   celsius: "c", centigrade: "c", fahrenheit: "f", kelvin: "k",
   bytes: "byte", b: "byte", bits: "bit", kilobyte: "kb", kilobytes: "kb",
   megabyte: "mb", megabytes: "mb", gigabyte: "gb", gigabytes: "gb", terabyte: "tb", terabytes: "tb",
+  petabyte: "pb", petabytes: "pb", kibibyte: "kib", kibibytes: "kib", mebibyte: "mib", mebibytes: "mib",
+  gibibyte: "gib", gibibytes: "gib", tebibyte: "tib", tebibytes: "tib", pebibyte: "pib", pebibytes: "pib",
+  kilobit: "kbit", kilobits: "kbit", megabit: "mbit", megabits: "mbit",
+  gigabit: "gbit", gigabits: "gbit", terabit: "tbit", terabits: "tbit",
   degree: "deg", degrees: "deg", radian: "rad", radians: "rad",
   euro: "eur", euros: "eur", dollar: "usd", dollars: "usd", lira: "try", tl: "try",
   yen: "jpy", franc: "chf", francs: "chf", sterling: "gbp"
@@ -69,7 +85,9 @@ var ALIASES = {
 // Display labels differ from lookup keys.
 var LABELS = {
   c: "°C", f: "°F", k: "K", kmh: "km/h", byte: "B", bit: "bit",
-  kb: "kB", mb: "MB", gb: "GB", tb: "TB", kib: "KiB", mib: "MiB", gib: "GiB", tib: "TiB"
+  kb: "kB", mb: "MB", gb: "GB", tb: "TB", pb: "PB", kib: "KiB", mib: "MiB", gib: "GiB", tib: "TiB",
+  pib: "PiB", kbit: "kbit", mbit: "Mbit", gbit: "Gbit", tbit: "Tbit",
+  um: "µm", ug: "µg", ul: "µl", us: "µs"
 }
 
 // ISO codes recognised as currency units even before any rates are cached,
@@ -113,14 +131,16 @@ function isCurrency(key, rates) {
 }
 
 // Canonical unit key for a word, or null. Unknown words ending in `s` get one
-// retry with the `s` stripped, which covers plurals the table misses.
+// retry with the `s` stripped, which covers plurals the table misses. The
+// retry needs two letters left, so `ks` does not fall through to kelvin.
 function unitKey(word, rates) {
-  var w = String(word || "").toLowerCase()
+  // Micro is typed as µ (micro sign) or μ (Greek mu) and stored as u.
+  var w = String(word || "").toLowerCase().replace(/^[\u00b5\u03bc]/, "u")
   if (!w) return null
   if (Object.prototype.hasOwnProperty.call(UNITS, w)) return w
   if (Object.prototype.hasOwnProperty.call(ALIASES, w)) return ALIASES[w]
   if (isCurrency(w, rates)) return w
-  if (w.length > 1 && w.charAt(w.length - 1) === "s") {
+  if (w.length > 2 && w.charAt(w.length - 1) === "s") {
     var singular = w.slice(0, -1)
     if (Object.prototype.hasOwnProperty.call(UNITS, singular)) return singular
     if (Object.prototype.hasOwnProperty.call(ALIASES, singular)) return ALIASES[singular]
@@ -182,7 +202,9 @@ EngineError.prototype.name = "EngineError"
 // ---------------------------------------------------------------- lexer
 
 function isDigit(ch) { return ch >= "0" && ch <= "9" }
-function isIdentStart(ch) { return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_" }
+function isIdentStart(ch) {
+  return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_" || ch === "\u00b5" || ch === "\u03bc"
+}
 function isIdentChar(ch) { return isIdentStart(ch) || isDigit(ch) }
 
 // Rewrites applied before lexing: currency symbols become trailing unit

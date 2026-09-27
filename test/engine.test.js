@@ -74,6 +74,16 @@ test("units: decilitres and long prefixed names", () => {
     [`10${T}dl`, `2.5${T}dl`, `0.5${T}g`, `30${T}cm`])
 })
 
+test("units: nano, micro, deca and hecto", () => {
+  assert.deepEqual(sheet("500 nm to um\n5 μg to mg\n2 µm to nm\n3 hectolitres to l\n1 dam to m\n100 us to ms"),
+    [`0.5${T}µm`, `0.005${T}mg`, `2${T}000${T}nm`, `300${T}l`, `10${T}m`, `0.1${T}ms`])
+})
+
+test("units: peta, bits and binary long names", () => {
+  assert.deepEqual(sheet("1 pb to tb\n100 mbit to mb\n1 tebibyte to gib"),
+    [`1${T}000${T}TB`, `12.5${T}MB`, `1${T}024${T}GiB`])
+})
+
 test("functions: rounding keeps the unit, sign drops it", () => {
   assert.deepEqual(sheet("round(2.6 km)\nabs(-4 h)\nsign(-3 kg)"), [`3${T}km`, `4${T}h`, "-1"])
 })
@@ -90,6 +100,7 @@ const errors = [
   ["240 to eur", "no unit to convert from"],
   ["2 +", "unfinished line"],
   ["(2 + 3", "missing )"],
+  ["1 ks", "ks is not defined"],
   ["sin(3 kg)", "can't take sin of kg"],
   ["asin(1 rad)", "can't take asin of rad"],
   ["sqrt(100 eur)", "can't take sqrt of eur"],
