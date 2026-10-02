@@ -43,6 +43,14 @@ Item {
   readonly property int resultWidth: theme.resultWidth
   readonly property int editorWidth: width - resultWidth
 
+  // Line numbers: a fixed gutter left of the editor, wide enough for the
+  // last line's number and never narrower than two digits, so the text
+  // does not shift until line 100.
+  readonly property int digits: Math.max(2, String(lineCount).length)
+  readonly property int gutterPadX: Style.space(12)
+  readonly property int gutterWidth: gutterPadX + Math.ceil(gutterMetrics.advanceWidth("0") * digits)
+  readonly property int cursorLine: Math.floor(editor.cursorRectangle.y / rowHeight)
+
   // The RichText editor lays the natural line at the bottom of its
   // fixed-height block; a Text with a fixed lineHeight lays it at the top.
   // Every painted layer takes this inset so it lands where the editor's
@@ -53,6 +61,15 @@ Item {
     font.pixelSize: sheet.theme.textSize
   }
   readonly property int lineInset: Math.max(0, rowHeight - Math.ceil(metrics.height))
+
+  FontMetrics {
+    id: gutterMetrics
+    font.family: sheet.theme.monoFamily
+    font.pixelSize: sheet.theme.barTextSize
+  }
+  // The gutter number sits on the text's baseline, lifted a pixel: a short
+  // digit beside tall ones reads low when their feet match exactly.
+  readonly property real gutterInset: lineInset + metrics.ascent - gutterMetrics.ascent - Style.space(1)
 
   function focusEditor() {
     editor.forceActiveFocus()
@@ -234,12 +251,41 @@ Item {
       color: sheet.theme.surface
     }
 
+    // Gutter: small numbers in a faded muted, sitting on the text's baseline,
+    // so they read as labels rather than part of the line. The
+    // cursor's line is full muted. Fixed while long lines slide sideways
+    // under the editor's clip.
+    Item {
+      x: 0
+      y: sheet.spacer
+      width: sheet.gutterWidth
+      visible: !sheet.empty
+
+      Repeater {
+        model: sheet.lineCount
+        delegate: Text {
+          required property int index
+          readonly property bool current: index === sheet.cursorLine && editor.activeFocus
+          y: index * sheet.rowHeight
+          width: sheet.gutterWidth
+          topPadding: sheet.gutterInset
+          horizontalAlignment: Text.AlignRight
+          text: index + 1
+          color: sheet.theme.muted
+          opacity: current ? 1 : 0.55
+          font.family: sheet.theme.monoFamily
+          font.pixelSize: sheet.theme.barTextSize
+          textFormat: Text.PlainText
+        }
+      }
+    }
+
     Item {
       id: editorColumn
       property real hOffset: 0
-      x: 0
+      x: sheet.gutterWidth
       y: sheet.spacer
-      width: sheet.editorWidth
+      width: sheet.editorWidth - sheet.gutterWidth
       height: sheet.lineCount * sheet.rowHeight
       clip: true
 
