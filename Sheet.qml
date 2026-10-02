@@ -31,6 +31,9 @@ Item {
   property var result: ({ lines: [], names: [], resultCount: 0 })
   property string markup: ""
   property int copiedLine: -1
+  // `@n` right before the cursor: { index, lineStart, start, end, line,
+  // text, error, ghostX } or null. Tab swaps it for `text`.
+  property var pending: null
   property string copiedValue: ""
 
   signal edited()
@@ -162,6 +165,41 @@ Item {
     text = plainText()
     result = Engine.evaluateSheet(text, { rates: sheet.rates })
     markup = Engine.renderMarkup(result, theme.palette)
+    Qt.callLater(updatePending)
+  }
+
+  // ------------------------------------------------------------ references
+
+  // Runs after both the text and the cursor have settled, so the line and
+  // column are read from the same state.
+  function updatePending() {
+    var p = null
+    if (editor.selectionStart === editor.selectionEnd) {
+      var pos = editor.cursorPosition
+      var lineStart = text.lastIndexOf("\n", pos - 1) + 1
+      var index = text.slice(0, lineStart).split("\n").length - 1
+      p = Engine.completeReference(result, index, pos - lineStart, rates)
+      if (p) {
+        p.index = index
+        p.lineStart = lineStart
+        p.ghostX = editor.positionToRectangle(lineStart + result.lines[index].raw.length).x
+      }
+    }
+    pending = p
+  }
+
+  // Swaps `@n` for line n's value. The remove and the insert are two steps
+  // on the editor's undo stack; `referenceUndo` lets one Ctrl+Z take both
+  // back while nothing else has been typed since.
+  property bool referenceUndo: false
+  function acceptReference() {
+    var p = pending
+    if (!p || !p.text) return
+    var from = p.lineStart + p.start
+    editor.remove(from, p.lineStart + p.end)
+    insertPlain(from, p.text)
+    editor.cursorPosition = from + p.text.length
+    referenceUndo = true
   }
 
   onRatesChanged: evaluate()
@@ -326,6 +364,25 @@ Item {
           wrapMode: Text.NoWrap
         }
 
+        // Preview of what Tab pastes for `@n`, after the end of its line.
+        Text {
+          visible: !!sheet.pending
+          x: sheet.pending ? sheet.pending.ghostX + Style.space(12) : 0
+          y: sheet.pending ? sheet.pending.index * sheet.rowHeight : 0
+          height: sheet.rowHeight
+          topPadding: sheet.lineInset
+          lineHeight: sheet.rowHeight
+          lineHeightMode: Text.FixedHeight
+          text: !sheet.pending ? ""
+            : sheet.pending.text ? "⇥ " + sheet.pending.text
+            : sheet.pending.error
+          color: sheet.theme.muted
+          font.family: sheet.theme.monoFamily
+          font.pixelSize: sheet.theme.textSize
+          font.italic: !!sheet.pending && !sheet.pending.text
+          textFormat: Text.PlainText
+        }
+
         TextEdit {
           id: editor
           anchors.fill: parent
@@ -368,10 +425,27 @@ Item {
             sheet.edited()
           }
           onCursorRectangleChanged: sheet.keepCursorVisible()
+          onCursorPositionChanged: Qt.callLater(sheet.updatePending)
+          onSelectionStartChanged: Qt.callLater(sheet.updatePending)
 
           Keys.onPressed: function(event) {
             var ctrl = event.modifiers & Qt.ControlModifier
             var shift = event.modifiers & Qt.ShiftModifier
+            var paired = sheet.referenceUndo
+            sheet.referenceUndo = false
+            // Tab after `@n` pastes line n's value; with no valid value it
+            // does nothing rather than leave the editor.
+            if (event.key === Qt.Key_Tab && !shift && sheet.pending) {
+              sheet.acceptReference()
+              event.accepted = true
+              return
+            }
+            if (ctrl && !shift && event.key === Qt.Key_Z && paired) {
+              editor.undo()
+              editor.undo()
+              event.accepted = true
+              return
+            }
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
               sheet.tabPressed(event.key === Qt.Key_Backtab || !!shift)
               event.accepted = true
@@ -425,7 +499,9 @@ Item {
           required property var modelData
 
           readonly property bool hasValue: modelData.kind === "assign" || modelData.kind === "value"
+          // A line waiting on Tab for `@n` shows no lex error meanwhile.
           readonly property bool isError: modelData.kind === "error"
+            && !(sheet.pending && sheet.pending.index === index)
           readonly property bool staleRate: hasValue && modelData.usedRate && !!sheet.rates && !!sheet.rates.stale
           readonly property color valueColor: isError ? sheet.theme.err
             : modelData.kind === "assign" ? sheet.theme.ok : sheet.theme.text
@@ -493,7 +569,8 @@ Item {
             width: Math.min(implicitWidth, sheet.resultWidth - sheet.theme.resultPadX * 2 - (rateTag.visible ? rateTag.width + Style.space(6) : 0))
             // The engine groups thousands with a thin space, which JetBrains
             // Mono draws under 2px wide; a monospace cell reads as the gap.
-            text: row.modelData.display.replace(sheet.thinSpaces, " ")
+            text: row.modelData.kind === "error" && !row.isError ? ""
+              : row.modelData.display.replace(sheet.thinSpaces, " ")
             color: row.valueColor
             font.family: sheet.theme.monoFamily
             // Error messages are words, not numbers, and need the room.

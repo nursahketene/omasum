@@ -239,3 +239,62 @@ test("sheet summary", () => {
   assert.equal(r.resultCount, 3)
   assert.equal(r.lines.length, 6)
 })
+
+// `@n` completion: what Tab would put in place of the reference.
+function complete(text, index, col) {
+  const s = Engine.evaluateSheet(text)
+  const lines = text.split("\n")
+  return Engine.completeReference(s, index, col === undefined ? lines[index].length : col)
+}
+
+test("reference: plain value pastes the exact number", () => {
+  const r = complete("10/3\n@1", 1)
+  assert.equal(r.text, "3.3333333333333335")
+  assert.deepEqual([r.start, r.end, r.line], [0, 2, 1])
+})
+
+test("reference: the pasted text evaluates to the same value", () => {
+  for (const src of ["10/3", "2^70", "1/3e9", "75 kg to lbs", "92 f to c", "90 km/h", "-4 m",
+                     "18% of 240", "84 as % of 400", "255 to hex", "65 eur", "2.5 GB to MiB"]) {
+    const s = Engine.evaluateSheet(src + "\n@1")
+    const text = Engine.completeReference(s, 1, 2).text
+    const back = Engine.evaluateSheet(text).lines[0]
+    assert.equal(back.value, s.lines[0].value, `${src} → ${text}`)
+    assert.equal(back.unit, s.lines[0].unit, `${src} → ${text}`)
+  }
+})
+
+test("reference: units carry, with labels that read back", () => {
+  assert.equal(complete("5 kg\n@1", 1).text, "5 kg")
+  assert.equal(complete("100 c\n@1", 1).text, "100 c")
+  assert.equal(complete("2 MiB\n@1", 1).text, "2 MiB")
+  assert.equal(complete("12 to hex\n@1", 1).text, "0xC")
+  assert.equal(complete("18%\n@1", 1).text, "18%")
+})
+
+test("reference: brackets only when the value is not the whole expression", () => {
+  assert.equal(complete("5 kg\nx = @1", 1).text, "5 kg")
+  assert.equal(complete("5 kg\n@1 # note", 1, 2).text, "5 kg")
+  assert.equal(complete("5 kg\n@1^2", 1, 2).text, "(5 kg)")
+  assert.equal(complete("-3\n2 * @1", 1).text, "(-3)")
+  assert.equal(complete("3\n2 * @1", 1).text, "3")
+})
+
+test("reference: only a valid result completes", () => {
+  assert.equal(complete("\n@1", 1).error, "line 1 has no result")
+  assert.equal(complete("# note\n@1", 1).error, "line 1 has no result")
+  assert.equal(complete("2 +\n@1", 1).error, "line 1 has an error")
+  assert.equal(complete("1/0\n@1", 1).error, "line 1 has no result")
+  assert.equal(complete("2\n@9", 1).error, "no line 9")
+  assert.equal(complete("2\n@0", 1).error, "no line 0")
+  assert.equal(complete("@1", 0).error, "that's this line")
+  assert.equal(complete("@3\n\n7", 0).text, "7")
+})
+
+test("reference: only right before the cursor, outside comments", () => {
+  assert.equal(complete("2\n@1 + 1", 1, 6), null)
+  assert.equal(complete("2\n@12", 1, 2), null)
+  assert.equal(complete("2\n@1x", 1, 2), null)
+  assert.equal(complete("2\n# see @1", 1), null)
+  assert.equal(complete("2\n1 + 1", 1), null)
+})

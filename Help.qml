@@ -25,6 +25,10 @@ Item {
       ["total * 12", "19 680"],
       ["ans / 4", "4 920"]
     ]},
+    { title: "Line results", note: "@n then Tab pastes line n's exact result, units included. It is a copy, not a link: it won't follow later edits to line n.", rows: [
+      ["10 / 3", "3.3333"],
+      ["@1 ⇥  →  3.3333333333333335", "3.3333"]
+    ]},
     { title: "Comments", note: "Everything after # is a note, at the start of a line or after an expression.", rows: [
       ["# groceries", ""],
       ["rate = 65 eur   # agreed 12 Feb", "65 EUR"]
@@ -54,6 +58,7 @@ Item {
       ["Enter", "new line"],
       ["Escape", "hide the sheet, keep everything"],
       ["Ctrl+?", "this reference"],
+      ["Tab after @n", "paste line n's result"],
       ["Ctrl+Z", "undo, including clean sheet"],
       ["click a result", "copy the bare number"]
     ]}

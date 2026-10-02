@@ -700,6 +700,67 @@ function evaluateSheet(text, options) {
   return { lines: lines, names: names, resultCount: resultCount }
 }
 
+// ---------------------------------------------------------------- references
+
+// `@n` right before the cursor is a request to paste line n's result. It is
+// never evaluated: Tab swaps it for the exact value as text, so nothing in
+// the sheet points at another line afterwards.
+
+// Shortest text that reads back as exactly `v`.
+function exactNumber(v) {
+  return String(v).replace("e+", "e")
+}
+
+// The unit as typed: the display label when it reads back as the same unit,
+// otherwise the key (`°C` does not lex, `c` does).
+function unitText(key, rates) {
+  var label = unitLabel(key, rates)
+  return unitKey(label, rates) === key ? label : key
+}
+
+// What Tab inserts for a line's result. A unit or a minus sign gets brackets
+// unless the value is the whole expression, so `@2^2` squares all of `5 kg`.
+function referenceText(line, rates, bare) {
+  var v = line.value
+  if (line.percent) return exactNumber(v) + "%"
+  if (line.base && Math.floor(v) === v && v >= 0) return formatBase(v, line.base)
+  var s = exactNumber(v)
+  if (line.unit) s += " " + unitText(line.unit, rates)
+  if (!bare && (line.unit || v < 0)) s = "(" + s + ")"
+  return s
+}
+
+// Looks for `@n` ending at column `col` of line `index` in an evaluated sheet.
+// Returns null when there is none, otherwise { start, end, line, text, error }
+// with columns over the raw line: `text` is what Tab inserts, or `error` says
+// why it cannot.
+function completeReference(sheet, index, col, rates) {
+  var current = sheet.lines[index]
+  if (!current) return null
+  var raw = current.raw
+  var m = /@(\d+)$/.exec(raw.slice(0, col))
+  if (!m) return null
+  if (col < raw.length && isIdentChar(raw.charAt(col))) return null
+  var start = col - m[0].length
+  if (raw.slice(0, start).indexOf("#") !== -1) return null
+
+  var n = parseInt(m[1], 10)
+  var out = { start: start, end: col, line: n, text: null, error: null }
+  var target = sheet.lines[n - 1]
+  if (n - 1 === index) out.error = "that's this line"
+  else if (!target) out.error = "no line " + n
+  else if (target.kind === "error") out.error = "line " + n + " has an error"
+  else if ((target.kind !== "value" && target.kind !== "assign") || !isFinite(target.value))
+    out.error = "line " + n + " has no result"
+  if (out.error) return out
+
+  var rest = splitComment(raw.slice(0, start) + raw.slice(col)).code.replace(/^\s+|\s+$/g, "")
+  var am = ASSIGN_RE.exec(rest)
+  var body = am ? am[2].replace(/^\s+|\s+$/g, "") : rest
+  out.text = referenceText(target, rates, body === "")
+  return out
+}
+
 // ---------------------------------------------------------------- colouring
 
 // Classes: comment, number, op, unit, keyword, func, const, name, unknown,
@@ -790,6 +851,7 @@ var Engine = {
   evaluateLine: evaluateLine,
   renderMarkup: renderMarkup,
   colourLine: colourLine,
+  completeReference: completeReference,
   formatPlain: formatPlain,
   formatBase: formatBase,
   unitKey: unitKey,
