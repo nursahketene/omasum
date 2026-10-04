@@ -29,7 +29,7 @@ Item {
       ["10 / 3", "3.3333"],
       ["@1 ⇥  →  3.3333333333333335", "3.3333"]
     ]},
-    { title: "Sheets", note: "One sheet is all you need, but you can keep more. Ctrl+O or the sheet's name in the top bar opens the tray: most recently used first, and the sheet you used last is the one that opens. Up/Down and Enter switch, Ctrl+Enter or a double-click renames, Ctrl+N or + starts a new one.", rows: [] },
+    { title: "Sheets", note: "One sheet is all you need, but you can keep more. Ctrl+O or the sheet's name in the top bar opens the tray: most recently used first, and the sheet you used last is the one that opens. Up/Down and Enter switch, Ctrl+Enter or a double-click renames, Ctrl+N or + starts a new one. Ctrl+D or the trash on a row asks to delete that sheet; Ctrl+D or Enter again deletes it for good, Escape keeps it.", rows: [] },
     { title: "Comments", note: "Everything after # is a note, at the start of a line or after an expression.", rows: [
       ["# groceries", ""],
       ["rate = 65 eur   # agreed 12 Feb", "65 EUR"]
@@ -62,6 +62,7 @@ Item {
       ["Ctrl+?", "this reference"],
       ["Ctrl+O", "sheets tray"],
       ["Ctrl+N", "new sheet"],
+      ["Ctrl+D twice", "delete the selected sheet"],
       ["Tab after @n", "paste line n's result"],
       ["Ctrl+Z", "undo, including clean sheet"],
       ["click a result", "copy the bare number"]

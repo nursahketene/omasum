@@ -166,6 +166,22 @@ Item {
     writeIndex()
   }
 
+  // Deleting the open sheet opens the next most recent one; deleting the
+  // only sheet leaves a fresh, empty `untitled` in its place.
+  function deleteSheet(id) {
+    if (!sheetIdPattern.test(id)) return
+    if (sheets.length === 1) {
+      activate({ id: "sheet-" + Date.now().toString(36), name: "untitled", used: "" })
+    } else if (id === activeId) {
+      activate(sheets[1])
+    }
+    var list = []
+    for (var i = 0; i < sheets.length; i++) if (sheets[i].id !== id) list.push(sheets[i])
+    sheets = list
+    writeIndex()
+    Quickshell.execDetached(["rm", "-f", "--", stateDir + "/" + id + ".calc"])
+  }
+
   function toggleTray() {
     if (trayOpen) { closeTray(); return }
     helpOpen = false
@@ -430,6 +446,7 @@ Item {
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
           if (tray.renaming) tray.cancelRename()
+          else if (tray.confirmingDelete) tray.cancelDelete()
           else if (root.trayOpen) root.closeTray()
           else if (root.helpOpen) { root.helpOpen = false; sheet.focusEditor() }
           else root.dismiss()
@@ -702,6 +719,7 @@ Item {
             onChosen: function(id) { root.switchSheet(id) }
             onRenamed: function(id, name) { root.renameSheet(id, name) }
             onCreateRequested: root.newSheet()
+            onDeleteRequested: function(id) { root.deleteSheet(id) }
           }
         }
 

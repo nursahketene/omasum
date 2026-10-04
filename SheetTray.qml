@@ -6,8 +6,9 @@ import qs.Commons
 // user picked; Omasum.qml owns the list, the files and the switching.
 //
 // Keys while the list has focus: Up/Down move, Enter opens, Ctrl+Enter
-// renames. Ctrl+N, Ctrl+O and Escape are handled by the panel, which sees
-// them first.
+// renames, Ctrl+D asks to delete and Ctrl+D or Enter again deletes.
+// Ctrl+N, Ctrl+O and Escape are handled by the panel, which sees them
+// first.
 Item {
   id: tray
 
@@ -18,13 +19,18 @@ Item {
   signal chosen(string id)
   signal renamed(string id, string name)
   signal createRequested()
+  signal deleteRequested(string id)
 
   property int selected: 0
   property int editing: -1
   readonly property bool renaming: editing >= 0
+  // The row asking "delete?"; a second Ctrl+D, Enter or trash click deletes.
+  property int confirming: -1
+  readonly property bool confirmingDelete: confirming >= 0
 
   function focusList() {
     editing = -1
+    confirming = -1
     selected = 0
     list.positionViewAtBeginning()
     list.forceActiveFocus()
@@ -32,6 +38,7 @@ Item {
 
   function startRename(index) {
     if (index < 0 || index >= sheets.length) return
+    confirming = -1
     selected = index
     editing = index
   }
@@ -47,6 +54,25 @@ Item {
   function cancelRename() {
     editing = -1
     list.forceActiveFocus()
+  }
+
+  // First call asks, second call on the same row deletes.
+  function requestDelete(index) {
+    if (index < 0 || index >= sheets.length) return
+    selected = index
+    if (confirming === index) {
+      confirming = -1
+      deleteRequested(sheets[index].id)
+      // The list has already shrunk by the time the signal returns.
+      selected = Math.max(0, Math.min(index, sheets.length - 1))
+    } else {
+      confirming = index
+    }
+    list.forceActiveFocus()
+  }
+
+  function cancelDelete() {
+    confirming = -1
   }
 
   function open(index) {
@@ -147,11 +173,26 @@ Item {
 
     Keys.onPressed: function(event) {
       var ctrl = event.modifiers & Qt.ControlModifier
+      if (ctrl && event.key === Qt.Key_D) {
+        tray.requestDelete(tray.selected)
+        event.accepted = true
+        return
+      }
+      if (tray.confirmingDelete && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+        tray.requestDelete(tray.confirming)
+        event.accepted = true
+        return
+      }
+      // Moving the selection steps away from the question. The list sees
+      // keys before the panel does, so Escape and bare modifiers are left
+      // alone here.
       if (event.key === Qt.Key_Up) {
+        tray.cancelDelete()
         tray.selected = Math.max(0, tray.selected - 1)
         list.positionViewAtIndex(tray.selected, ListView.Contain)
         event.accepted = true
       } else if (event.key === Qt.Key_Down) {
+        tray.cancelDelete()
         tray.selected = Math.min(tray.sheets.length - 1, tray.selected + 1)
         list.positionViewAtIndex(tray.selected, ListView.Contain)
         event.accepted = true
@@ -168,6 +209,8 @@ Item {
       required property var modelData
       readonly property bool active: modelData.id === tray.activeId
       readonly property bool isSelected: index === tray.selected
+      readonly property bool asking: index === tray.confirming
+      readonly property bool showTrash: tray.editing !== index && (isSelected || rowMouse.containsMouse || asking)
       width: list.width
       height: tray.theme.rowHeight
 
@@ -190,11 +233,11 @@ Item {
         visible: tray.editing !== row.index
         anchors.left: parent.left
         anchors.leftMargin: tray.theme.padX
-        anchors.right: when.left
+        anchors.right: row.showTrash ? trash.left : when.left
         anchors.rightMargin: Style.space(10)
         anchors.verticalCenter: parent.verticalCenter
-        text: row.modelData.name
-        color: row.active ? tray.theme.text : tray.theme.muted
+        text: row.asking ? "delete " + row.modelData.name + "?" : row.modelData.name
+        color: row.asking ? tray.theme.err : row.active ? tray.theme.text : tray.theme.muted
         font.family: tray.theme.uiFamily
         font.pixelSize: tray.theme.textSize - 2
         elide: Text.ElideRight
@@ -206,7 +249,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: tray.theme.padX
         anchors.verticalCenter: parent.verticalCenter
-        visible: tray.editing !== row.index
+        visible: tray.editing !== row.index && !row.showTrash
         text: tray.whenUsed(row.modelData.used)
         color: tray.theme.muted
         font.family: tray.theme.uiFamily
@@ -234,6 +277,29 @@ Item {
           id: clickTimer
           interval: Qt.styleHints.mouseDoubleClickInterval
           onTriggered: tray.open(row.index)
+        }
+      }
+
+      // Delete, on the right of the selected or hovered row, in place of
+      // the time.
+      Text {
+        id: trash
+        visible: row.showTrash
+        anchors.right: parent.right
+        anchors.rightMargin: tray.theme.padX
+        anchors.verticalCenter: parent.verticalCenter
+        text: "󰩹"
+        color: row.asking || trashMouse.containsMouse ? tray.theme.err : tray.theme.muted
+        font.family: tray.theme.uiFamily
+        font.pixelSize: tray.theme.barTextSize + 3
+        textFormat: Text.PlainText
+        MouseArea {
+          id: trashMouse
+          anchors.fill: parent
+          anchors.margins: -Style.space(6)
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: tray.requestDelete(row.index)
         }
       }
 
@@ -283,10 +349,14 @@ Item {
     anchors.rightMargin: tray.theme.padX
     height: tray.theme.rowHeight + tray.theme.spacer
     verticalAlignment: Text.AlignVCenter
-    text: tray.renaming ? "↵ save · esc cancel" : "↵ open · ctrl ↵ rename"
+    text: tray.renaming ? "↵ save · esc cancel"
+      : tray.confirmingDelete ? "ctrl d or ↵ delete · esc keep"
+      : "↵ open · ctrl ↵ rename\nctrl d delete"
     color: tray.theme.muted
     font.family: tray.theme.uiFamily
     font.pixelSize: tray.theme.barTextSize
+    wrapMode: Text.WordWrap
+    maximumLineCount: 2
     elide: Text.ElideRight
     textFormat: Text.PlainText
   }

@@ -54,7 +54,7 @@ The plugin writes only to its own two directories above. It never edits your Hyp
 - Lines are numbered in the gutter. Type `@n` and press `Tab` to paste line n's result in its place: the exact value, units included (`@3` → `3.3333333333333335`, `@4` → `(5 kg)` inside a longer expression). A faint preview after the line shows what Tab will insert, or why it can't — Tab only completes when line n has a valid result. It is a copy, not a link, so it won't follow later edits to line n; `Ctrl+Z` turns it back into `@n`.
 - `#` starts a comment, at the start of a line or after an expression.
 - Click a result to copy the bare number. `Escape` hides the sheet and keeps everything; `clean sheet` in the top bar is the only thing that empties it, and `Ctrl+Z` undoes that too.
-- One sheet is the default, but you can keep more. `Ctrl+O` (or the sheet's name in the top bar) opens a tray on the left with every sheet, most recently used first; Omasum always opens on the sheet you used last. `Up`/`Down` and `Enter` switch sheets, `Ctrl+Enter` or a double-click renames one, and `Ctrl+N` (or `+` in the tray) starts a new one.
+- One sheet is the default, but you can keep more. `Ctrl+O` (or the sheet's name in the top bar) opens a tray on the left with every sheet, most recently used first; Omasum always opens on the sheet you used last. `Up`/`Down` and `Enter` switch sheets, `Ctrl+Enter` or a double-click renames one, `Ctrl+N` (or `+` in the tray) starts a new one, and `Ctrl+D` (or the trash icon on a row) asks to delete the selected sheet — `Ctrl+D` or `Enter` again deletes it and its file for good, `Escape` keeps it. Deleting the open sheet opens the next most recent one; deleting the last one leaves a fresh empty sheet.
 - `? syntax` in the top bar (or `Ctrl+?`) opens the full reference.
 
 Some of what it understands:
@@ -77,7 +77,7 @@ Sheets autosave to `~/.local/state/omasum/` as plain text, exactly what you type
 ```
 Omasum.qml    the window, bars, help screen, sheets and their files, rates
 Sheet.qml     the editor, the coloured layer behind it, the result column
-SheetTray.qml the sheets tray: the list, renaming, the new-sheet button
+SheetTray.qml the sheets tray: the list, renaming, new and delete
 Theme.qml     the eleven colour tokens, bound to the shell's Color and Style
 Help.qml      the syntax reference
 engine.js     lexer, parser, units, percentages, bases, formatting, evaluator
