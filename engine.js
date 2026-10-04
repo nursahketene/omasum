@@ -97,7 +97,14 @@ var CURRENCIES = ["eur", "usd", "gbp", "try", "jpy", "chf", "aud", "cad", "nzd",
   "dkk", "pln", "czk", "huf", "ron", "bgn", "isk", "cny", "hkd", "sgd", "krw", "inr", "brl",
   "mxn", "zar", "ils", "idr", "myr", "php", "thb"]
 
-var CURRENCY_SYMBOLS = { "€": "eur", "$": "usd", "£": "gbp", "₺": "try", "¥": "jpy" }
+// ¥ reads as yen; the yuan shares the sign but is written cny.
+var CURRENCY_SYMBOLS = {
+  "€": "eur", "$": "usd", "£": "gbp", "₺": "try", "¥": "jpy",
+  "₹": "inr", "₩": "krw", "₪": "ils", "₱": "php", "฿": "thb"
+}
+var SYMBOL_CHARS = Object.keys(CURRENCY_SYMBOLS).join("")
+var SYMBOL_BEFORE_NUMBER = new RegExp("([" + SYMBOL_CHARS + "])\\s*(\\d[\\d_,]*(?:\\.\\d+)?)", "g")
+var SYMBOL_ANYWHERE = new RegExp("[" + SYMBOL_CHARS + "]", "g")
 
 var CONSTANTS = { pi: Math.PI, e: Math.E, tau: Math.PI * 2, phi: (1 + Math.sqrt(5)) / 2 }
 
@@ -207,13 +214,17 @@ function isIdentStart(ch) {
 }
 function isIdentChar(ch) { return isIdentStart(ch) || isDigit(ch) }
 
-// Rewrites applied before lexing: currency symbols become trailing unit
-// words (`$120` → `120 usd`), and the Unicode operators become ASCII.
+// Rewrites applied before conversion splitting and lexing: currency symbols
+// become unit words, and the Unicode operators become ASCII. A symbol in
+// front of a number moves behind it (`$120` → `120 usd`); any other, after
+// a number or as a conversion target (`120€`, `to £`), becomes its word in
+// place.
 function rewrite(code) {
   var out = String(code)
-  out = out.replace(/([€$£₺¥])\s*(\d[\d_,]*(?:\.\d+)?)/g, function(_, sym, num) {
+  out = out.replace(SYMBOL_BEFORE_NUMBER, function(_, sym, num) {
     return num + " " + CURRENCY_SYMBOLS[sym]
   })
+  out = out.replace(SYMBOL_ANYWHERE, function(sym) { return " " + CURRENCY_SYMBOLS[sym] + " " })
   out = out.replace(/×/g, "*").replace(/÷/g, "/")
   return out
 }
@@ -578,7 +589,7 @@ function evaluateLine(code, ctx) {
   }
 
   try {
-    var out = evaluateBody(body, ctx)
+    var out = evaluateBody(rewrite(body), ctx)
     result.value = out.v
     result.unit = out.unit
     result.percent = !!out.percent

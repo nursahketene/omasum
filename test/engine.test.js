@@ -298,3 +298,25 @@ test("reference: only right before the cursor, outside comments", () => {
   assert.equal(complete("2\n# see @1", 1), null)
   assert.equal(complete("2\n1 + 1", 1), null)
 })
+
+// Currency symbols: before or after the number, or as the conversion target.
+test("currency symbols read wherever they are written", () => {
+  const rates = { rates: { EUR: 1, USD: 1.1, GBP: 0.85, INR: 92 } }
+  const d = s => Engine.evaluateSheet(s, { rates }).lines[0].display
+  assert.equal(d("$120"), `120${T}USD`)
+  assert.equal(d("120€"), `120${T}EUR`)
+  assert.equal(d("120 €"), `120${T}EUR`)
+  assert.equal(d("$1,200.50"), `1${T}200.5${T}USD`)
+  assert.equal(d("-$5"), `-5${T}USD`)
+  assert.equal(d("₹500"), `500${T}INR`)
+  assert.equal(d("120 eur to $"), `132${T}USD`)
+  assert.equal(d("€120 in £"), `102${T}GBP`)
+  assert.equal(d("100€ + 10%"), `110${T}EUR`)
+  assert.equal(d("x = 5£"), `5${T}GBP`)
+  assert.equal(d("€5 # costs $ later"), `5${T}EUR`)
+})
+
+test("currency symbols colour as units", () => {
+  const spans = Engine.colourLine("120€ to £", {}, null, null)
+  assert.deepEqual(spans.filter(s => s[2] === "unit").map(s => s[0]), [3, 8])
+})

@@ -40,7 +40,8 @@ Item {
       ["90 min in h", "1.5 h"],
       ["2.5 GB to MiB", "2 384.19 MiB"],
       ["2 km + 300 m", "2.3 km"],
-      ["$120 in eur", "rates from the ECB"]
+      ["$120 in eur", "rates from the ECB"],
+      ["45€ to £", "symbols before or after"]
     ]},
     { title: "Percentages", note: "", rows: [
       ["18% of 240", "43.2"],

@@ -65,7 +65,7 @@ Some of what it understands:
 | `18% of 240` · `240 + 18%` · `84 as % of 400` | `43.2` · `283.2` · `21 %` |
 | `20 km to miles` · `92 f to c` · `90 min in h` | `12.4274 mi` · `33.3333 °C` · `1.5 h` |
 | `2.5 GB to MiB` | `2 384.19 MiB` |
-| `$120 in eur` · `65 eur to try` | ECB daily rates |
+| `$120 in eur` · `45€ to £` · `65 eur to try` | ECB daily rates; `€ $ £ ¥ ₺ ₹ ₩ ₪ ₱ ฿` work before or after the number |
 | `255 to hex` · `0b1010 * 2` | `0xFF` · `20` |
 | `sqrt(2) * 10` · `2pi` · `min(1,2)` | `14.1421` · `6.2832` · `1` |
 
