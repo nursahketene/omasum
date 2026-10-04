@@ -229,7 +229,9 @@ test("markup: escapes and preserves spaces", () => {
   const html = Engine.renderMarkup(r, { number: "#111111", name: "#222222" })
   assert.equal(html.split("<br>").length, 2)
   assert.ok(html.indexOf("&lt;") !== -1)
-  assert.ok(html.indexOf("&nbsp;&nbsp;") !== -1)
+  // Plain spaces: the sheet's pre-wrap block keeps them and can wrap there.
+  assert.ok(html.indexOf("&nbsp;") === -1)
+  assert.ok(html.indexOf("  ") !== -1)
   assert.ok(html.indexOf('<font color="#222222">x</font>') !== -1)
 })
 

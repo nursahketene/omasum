@@ -830,11 +830,13 @@ function colourLine(raw, scope, definingName, rates) {
   return spans
 }
 
+// Spaces stay plain: the sheet sets the markup inside a white-space:pre-wrap
+// block, which keeps runs of them and still lets a long line wrap.
 function escapeMarkup(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/ /g, "&nbsp;")
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 }
 
-// Builds Text.StyledText markup for the whole sheet. `palette` maps a class
+// Builds rich-text markup for the whole sheet. `palette` maps a class
 // name to a colour string; classes missing from it are left uncoloured.
 function renderMarkup(sheet, palette) {
   var out = []

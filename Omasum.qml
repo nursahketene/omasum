@@ -743,8 +743,46 @@ Item {
             color: theme.border
           }
 
+          // With the tray open the bar shows the tray's keys instead.
+          Row {
+            visible: root.trayOpen
+            anchors.left: parent.left
+            anchors.leftMargin: theme.padX
+            anchors.right: sheetCount.left
+            anchors.rightMargin: Style.space(20)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(14)
+            clip: true
+
+            BarHint { visible: tray.renaming; key: "↵"; label: "save" }
+            BarHint { visible: tray.renaming; key: "esc"; label: "cancel" }
+            BarHint { visible: tray.confirmingDelete; key: "ctrl d"; label: "or" }
+            BarHint { visible: tray.confirmingDelete; key: "↵"; label: "delete for good" }
+            BarHint { visible: tray.confirmingDelete; key: "esc"; label: "keep" }
+            BarHint { visible: !tray.renaming && !tray.confirmingDelete; key: "↑↓"; label: "move" }
+            BarHint { visible: !tray.renaming && !tray.confirmingDelete; key: "↵"; label: "open" }
+            BarHint { visible: !tray.renaming && !tray.confirmingDelete; key: "ctrl ↵"; label: "rename" }
+            BarHint { visible: !tray.renaming && !tray.confirmingDelete; key: "ctrl n"; label: "new" }
+            BarHint { visible: !tray.renaming && !tray.confirmingDelete; key: "ctrl d"; label: "delete" }
+            BarHint { visible: !tray.renaming && !tray.confirmingDelete; key: "esc"; label: "close" }
+          }
+
+          Text {
+            id: sheetCount
+            visible: root.trayOpen
+            anchors.right: parent.right
+            anchors.rightMargin: theme.padX
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.sheets.length + (root.sheets.length === 1 ? " sheet" : " sheets")
+            color: theme.muted
+            font.family: theme.uiFamily
+            font.pixelSize: theme.barTextSize
+            textFormat: Text.PlainText
+          }
+
           Text {
             id: countText
+            visible: !root.trayOpen
             anchors.right: parent.right
             anchors.rightMargin: theme.padX
             anchors.verticalCenter: parent.verticalCenter
@@ -758,6 +796,7 @@ Item {
           }
 
           Row {
+            visible: !root.trayOpen
             anchors.left: parent.left
             anchors.leftMargin: theme.padX
             anchors.right: countText.left

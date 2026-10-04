@@ -7,8 +7,8 @@ import qs.Commons
 //
 // Keys while the list has focus: Up/Down move, Enter opens, Ctrl+Enter
 // renames, Ctrl+D asks to delete and Ctrl+D or Enter again deletes.
-// Ctrl+N, Ctrl+O and Escape are handled by the panel, which sees them
-// first.
+// Ctrl+N, Ctrl+O and Escape are handled by the panel, whose bottom bar
+// shows these keys while the tray is open.
 Item {
   id: tray
 
@@ -161,7 +161,7 @@ Item {
   ListView {
     id: list
     anchors.top: header.bottom
-    anchors.bottom: footer.top
+    anchors.bottom: parent.bottom
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.rightMargin: 1
@@ -337,27 +337,5 @@ Item {
         }
       }
     }
-  }
-
-  // Footer: the keys, in the bar's style.
-  Text {
-    id: footer
-    anchors.bottom: parent.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.leftMargin: tray.theme.padX
-    anchors.rightMargin: tray.theme.padX
-    height: tray.theme.rowHeight + tray.theme.spacer
-    verticalAlignment: Text.AlignVCenter
-    text: tray.renaming ? "↵ save · esc cancel"
-      : tray.confirmingDelete ? "ctrl d or ↵ delete · esc keep"
-      : "↵ open · ctrl ↵ rename\nctrl d delete"
-    color: tray.theme.muted
-    font.family: tray.theme.uiFamily
-    font.pixelSize: tray.theme.barTextSize
-    wrapMode: Text.WordWrap
-    maximumLineCount: 2
-    elide: Text.ElideRight
-    textFormat: Text.PlainText
   }
 }

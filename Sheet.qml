@@ -11,7 +11,10 @@ import "engine.js" as Engine
 //
 // TextEdit has no lineHeight property, so the 30px row comes from a block
 // format instead: the editor runs in RichText mode where every line is a
-// <div style="line-height:30px; white-space:pre"> block. Enter inherits the block
+// <div style="line-height:30px; white-space:pre-wrap"> block, and the
+// painted layer is the same markup in the same block, so both wrap at the
+// same places. Long lines wrap at the result column; a line's rows are
+// read back from the editor's layout into `lineTops`. Enter inherits the block
 // format, and paste is intercepted so only plain text ever enters the
 // document. The plain text is read back with getText() and never from
 // `text`, which is HTML in this mode.
@@ -32,7 +35,7 @@ Item {
   property string markup: ""
   property int copiedLine: -1
   // `@n` right before the cursor: { index, lineStart, start, end, line,
-  // text, error, ghostX } or null. Tab swaps it for `text`.
+  // text, error, ghostX, ghostY } or null. Tab swaps it for `text`.
   property var pending: null
   property string copiedValue: ""
 
@@ -52,7 +55,35 @@ Item {
   readonly property int digits: Math.max(2, String(lineCount).length)
   readonly property int gutterPadX: Style.space(12)
   readonly property int gutterWidth: gutterPadX + Math.ceil(gutterMetrics.advanceWidth("0") * digits)
-  readonly property int cursorLine: Math.floor(editor.cursorRectangle.y / rowHeight)
+  readonly property int cursorLine: text.slice(0, editor.cursorPosition).split("\n").length - 1
+
+  // Wrapped layout: the top of each line's first row, read from the
+  // editor after every change, and the number of rows in all.
+  property var lineTops: [0]
+  readonly property int visualRows: Math.max(1, editor.lineCount)
+  function rowTop(index) {
+    var t = lineTops[index]
+    return t === undefined ? index * rowHeight : t
+  }
+  function rowSpan(index) {
+    var next = index + 1 < lineTops.length ? lineTops[index + 1] : visualRows * rowHeight
+    return Math.max(rowHeight, next - rowTop(index))
+  }
+  // The editor reports a position at its caret's top, which sits low in
+  // the row; snap it to the row it is in.
+  function rowAt(position) {
+    return Math.floor(editor.positionToRectangle(position).y / rowHeight) * rowHeight
+  }
+  function updateLayout() {
+    var lines = text.split("\n")
+    var tops = []
+    var pos = 0
+    for (var i = 0; i < lines.length; i++) {
+      tops.push(rowAt(pos))
+      pos += lines[i].length + 1
+    }
+    lineTops = tops
+  }
 
   // The RichText editor lays the natural line at the bottom of its
   // fixed-height block; a Text with a fixed lineHeight lays it at the top.
@@ -85,7 +116,7 @@ Item {
   }
 
   function lineHtml(html) {
-    return '<div style="line-height:' + rowHeight + 'px; white-space:pre">' + html + "</div>"
+    return '<div style="line-height:' + rowHeight + 'px; white-space:pre-wrap">' + html + "</div>"
   }
 
   // One block, lines separated by <br>: Qt's importer drops an empty <div>,
@@ -165,6 +196,7 @@ Item {
     text = plainText()
     result = Engine.evaluateSheet(text, { rates: sheet.rates })
     markup = Engine.renderMarkup(result, theme.palette)
+    Qt.callLater(updateLayout)
     Qt.callLater(updatePending)
   }
 
@@ -182,7 +214,9 @@ Item {
       if (p) {
         p.index = index
         p.lineStart = lineStart
-        p.ghostX = editor.positionToRectangle(lineStart + result.lines[index].raw.length).x
+        var end = lineStart + result.lines[index].raw.length
+        p.ghostX = editor.positionToRectangle(end).x
+        p.ghostY = rowAt(end)
       }
     }
     pending = p
@@ -234,12 +268,6 @@ Item {
     var bottom = top + rowHeight
     if (top < flick.contentY) flick.contentY = Math.max(0, top - spacer)
     else if (bottom > flick.contentY + flick.height) flick.contentY = bottom - flick.height + spacer
-    // Horizontal: long lines clip rather than wrap, so slide the editor
-    // layers under their clip to keep the caret in view.
-    var visibleLeft = editorColumn.hOffset
-    var visibleRight = visibleLeft + editorColumn.width
-    if (cr.x < visibleLeft + theme.padX) editorColumn.hOffset = Math.max(0, cr.x - theme.padX)
-    else if (cr.x + 2 > visibleRight - theme.padX) editorColumn.hOffset = cr.x + 2 - editorColumn.width + theme.padX
   }
 
   // ------------------------------------------------------------ layout
@@ -249,7 +277,7 @@ Item {
     anchors.fill: parent
     clip: true
     contentWidth: width
-    contentHeight: Math.max(height, sheet.spacer + sheet.lineCount * sheet.rowHeight + sheet.spacer)
+    contentHeight: Math.max(height, sheet.spacer + sheet.visualRows * sheet.rowHeight + sheet.spacer)
     boundsBehavior: Flickable.StopAtBounds
     interactive: false
 
@@ -258,7 +286,7 @@ Item {
     MouseArea {
       anchors.fill: parent
       onClicked: function(mouse) {
-        if (mouse.y < sheet.spacer + sheet.lineCount * sheet.rowHeight) return
+        if (mouse.y < sheet.spacer + sheet.visualRows * sheet.rowHeight) return
         editor.cursorPosition = editor.length
         editor.forceActiveFocus()
       }
@@ -283,9 +311,9 @@ Item {
     Rectangle {
       visible: sheet.copiedLine >= 0
       x: 0
-      y: sheet.spacer + sheet.copiedLine * sheet.rowHeight
+      y: sheet.spacer + sheet.rowTop(sheet.copiedLine)
       width: flick.width
-      height: sheet.rowHeight
+      height: sheet.rowSpan(sheet.copiedLine)
       color: sheet.theme.surface
     }
 
@@ -304,7 +332,7 @@ Item {
         delegate: Text {
           required property int index
           readonly property bool current: index === sheet.cursorLine && editor.activeFocus
-          y: index * sheet.rowHeight
+          y: sheet.rowTop(index)
           width: sheet.gutterWidth
           topPadding: sheet.gutterInset
           horizontalAlignment: Text.AlignRight
@@ -320,16 +348,14 @@ Item {
 
     Item {
       id: editorColumn
-      property real hOffset: 0
       x: sheet.gutterWidth
       y: sheet.spacer
       width: sheet.editorWidth - sheet.gutterWidth
-      height: sheet.lineCount * sheet.rowHeight
+      height: sheet.visualRows * sheet.rowHeight
       clip: true
 
       Item {
-        x: -editorColumn.hOffset
-        width: Math.max(editorColumn.width, editor.contentWidth + sheet.theme.padX * 2)
+        width: editorColumn.width
         height: editorColumn.height
 
         // Ghost line for an empty sheet, cleared on the first keystroke.
@@ -353,22 +379,19 @@ Item {
           anchors.fill: parent
           leftPadding: sheet.theme.padX
           rightPadding: sheet.theme.padX
-          topPadding: sheet.lineInset
-          textFormat: Text.StyledText
-          text: sheet.markup
+          textFormat: Text.RichText
+          text: sheet.lineHtml(sheet.markup)
           color: sheet.theme.text
           font.family: sheet.theme.monoFamily
           font.pixelSize: sheet.theme.textSize
-          lineHeight: sheet.rowHeight
-          lineHeightMode: Text.FixedHeight
-          wrapMode: Text.NoWrap
+          wrapMode: Text.Wrap
         }
 
         // Preview of what Tab pastes for `@n`, after the end of its line.
         Text {
           visible: !!sheet.pending
           x: sheet.pending ? sheet.pending.ghostX + Style.space(12) : 0
-          y: sheet.pending ? sheet.pending.index * sheet.rowHeight : 0
+          y: sheet.pending ? sheet.pending.ghostY : 0
           height: sheet.rowHeight
           topPadding: sheet.lineInset
           lineHeight: sheet.rowHeight
@@ -393,7 +416,7 @@ Item {
           selectedTextColor: "transparent"
           font.family: sheet.theme.monoFamily
           font.pixelSize: sheet.theme.textSize
-          wrapMode: TextEdit.NoWrap
+          wrapMode: TextEdit.Wrap
           textFormat: TextEdit.RichText
           text: sheet.lineHtml("")
           selectByMouse: true
@@ -425,6 +448,7 @@ Item {
             sheet.edited()
           }
           onCursorRectangleChanged: sheet.keepCursorVisible()
+          onWidthChanged: Qt.callLater(sheet.updateLayout)
           onCursorPositionChanged: Qt.callLater(sheet.updatePending)
           onSelectionStartChanged: Qt.callLater(sheet.updatePending)
 
@@ -506,7 +530,7 @@ Item {
           readonly property color valueColor: isError ? sheet.theme.err
             : modelData.kind === "assign" ? sheet.theme.ok : sheet.theme.text
 
-          y: index * sheet.rowHeight
+          y: sheet.rowTop(index)
           width: sheet.resultWidth
           height: sheet.rowHeight
 
