@@ -20,12 +20,15 @@ Item {
 
   property bool opened: false
   property bool helpOpen: false
+  property bool trayOpen: false
 
   readonly property string pluginId: (manifest && manifest.id) ? manifest.id : "dev.nur.omasum"
   readonly property string home: Quickshell.env("HOME")
   readonly property string stateDir: home + "/.local/state/omasum"
   readonly property string cacheDir: home + "/.cache/omasum"
-  readonly property string sheetPath: stateDir + "/sheet.calc"
+  readonly property string indexPath: stateDir + "/sheets.json"
+  // Empty until the index is read, so no sheet loads before we know which.
+  readonly property string sheetPath: indexLoaded ? stateDir + "/" + activeId + ".calc" : ""
   readonly property string ratesPath: cacheDir + "/rates.json"
   readonly property string ratesUrl: "https://api.frankfurter.dev/v1/latest?base=EUR"
 
@@ -36,6 +39,7 @@ Item {
   function open(payloadJson) {
     opened = true
     helpOpen = false
+    trayOpen = false
     refreshRatesIfStale()
     Qt.callLater(function() { sheet.focusEditor() })
   }
@@ -43,6 +47,7 @@ Item {
   function close() {
     opened = false
     helpOpen = false
+    trayOpen = false
     flushSave()
   }
 
@@ -51,11 +56,135 @@ Item {
     if (shell && typeof shell.hide === "function") shell.hide(pluginId)
   }
 
+  // ------------------------------------------------------------ sheets
+  //
+  // Each sheet is its own plain-text file in the state directory; the
+  // original sheet.calc is the sheet with id `sheet`, and new ones are
+  // sheet-<id>.calc. sheets.json holds the names and the order, most
+  // recently used first, so the first entry is the sheet that opens.
+
+  property var sheets: []
+  property bool indexLoaded: false
+  property bool indexReadFailed: false
+  readonly property string activeId: sheets.length > 0 ? sheets[0].id : "sheet"
+  readonly property string activeName: sheets.length > 0 ? sheets[0].name : ""
+  readonly property var sheetIdPattern: /^sheet(-[a-z0-9]{1,16})?$/
+
+  FileView {
+    id: indexFile
+    path: root.indexPath
+    printErrors: false
+    atomicWrites: true
+    blockWrites: true
+    onLoaded: root.applyIndex(text())
+    onLoadFailed: function(error) {
+      if (error !== FileViewError.FileNotFound) {
+        // An index we could not read is never overwritten.
+        console.warn("omasum: could not read " + root.indexPath + ": " + FileViewError.toString(error))
+        root.indexReadFailed = true
+      }
+      root.sheets = [{ id: "sheet", name: "untitled", used: new Date().toISOString() }]
+      root.indexLoaded = true
+    }
+  }
+
+  // Keeps only entries with a well-formed id, so a hand-edited index can
+  // never point a sheet path outside the state directory.
+  function applyIndex(raw) {
+    var list = []
+    try {
+      var data = JSON.parse(raw)
+      var seen = {}
+      var entries = data && data.sheets instanceof Array ? data.sheets : []
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i]
+        if (!e || typeof e.id !== "string" || !sheetIdPattern.test(e.id) || seen[e.id]) continue
+        seen[e.id] = true
+        list.push({
+          id: e.id,
+          name: typeof e.name === "string" && e.name.trim() ? e.name.trim().slice(0, 60) : "untitled",
+          used: typeof e.used === "string" ? e.used : ""
+        })
+      }
+    } catch (err) {
+      console.warn("omasum: could not parse " + indexPath)
+      indexReadFailed = true
+    }
+    list.sort(function(a, b) { return a.used < b.used ? 1 : a.used > b.used ? -1 : 0 })
+    if (list.length === 0) list.push({ id: "sheet", name: "untitled", used: new Date().toISOString() })
+    sheets = list
+    indexLoaded = true
+  }
+
+  function writeIndex() {
+    if (indexReadFailed) return
+    indexFile.setText(JSON.stringify({ version: 1, sheets: sheets }, null, 2) + "\n")
+  }
+
+  // Saves the open sheet, then moves `entry` to the front. The sheet path
+  // follows the first entry, so the file view loads the new sheet.
+  function activate(entry) {
+    flushSave()
+    var list = [entry]
+    for (var i = 0; i < sheets.length; i++) if (sheets[i].id !== entry.id) list.push(sheets[i])
+    entry.used = new Date().toISOString()
+    sheetLoaded = false
+    sheetReadFailed = false
+    sheets = list
+    writeIndex()
+  }
+
+  function switchSheet(id) {
+    if (id !== activeId) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (sheets[i].id === id) { activate(sheets[i]); break }
+      }
+    }
+    closeTray()
+  }
+
+  function nextSheetName() {
+    var taken = {}
+    for (var i = 0; i < sheets.length; i++) taken[sheets[i].name] = true
+    if (!taken["untitled"]) return "untitled"
+    for (var n = 2; ; n++) if (!taken["untitled " + n]) return "untitled " + n
+  }
+
+  function newSheet() {
+    if (!indexLoaded) return
+    activate({ id: "sheet-" + Date.now().toString(36), name: nextSheetName(), used: "" })
+    helpOpen = false
+    closeTray()
+  }
+
+  function renameSheet(id, name) {
+    var list = sheets.slice()
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) list[i] = { id: id, name: name.slice(0, 60), used: list[i].used }
+    }
+    sheets = list
+    writeIndex()
+  }
+
+  function toggleTray() {
+    if (trayOpen) { closeTray(); return }
+    helpOpen = false
+    trayOpen = true
+    tray.focusList()
+  }
+
+  function closeTray() {
+    trayOpen = false
+    sheet.focusEditor()
+  }
+
   // ------------------------------------------------------------ persistence
   //
-  // One sheet, autosaved, plain UTF-8, exactly what the buffer holds. Written
-  // on a 400ms debounce after the last keystroke and again when the panel
-  // hides. Atomic writes so an interrupted write cannot truncate the sheet.
+  // The open sheet, autosaved, plain UTF-8, exactly what the buffer holds.
+  // Written on a 400ms debounce after the last keystroke, again when the
+  // panel hides and before switching sheets. Atomic writes so an
+  // interrupted write cannot truncate the sheet; blocking ones so a switch
+  // never races its own save.
 
   property bool sheetLoaded: false
   property bool sheetReadFailed: false
@@ -73,6 +202,7 @@ Item {
     path: root.sheetPath
     printErrors: false
     atomicWrites: true
+    blockWrites: true
     onLoaded: {
       root.loadingSheet = true
       sheet.setText(text())
@@ -80,7 +210,11 @@ Item {
       root.sheetLoaded = true
     }
     onLoadFailed: function(error) {
+      // A sheet with no file yet is a new, empty one.
       if (error === FileViewError.FileNotFound) {
+        root.loadingSheet = true
+        sheet.setText("")
+        root.loadingSheet = false
         root.sheetLoaded = true
         return
       }
@@ -295,14 +429,26 @@ Item {
       Keys.priority: Keys.BeforeItem
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
-          if (root.helpOpen) { root.helpOpen = false; sheet.focusEditor() }
+          if (tray.renaming) tray.cancelRename()
+          else if (root.trayOpen) root.closeTray()
+          else if (root.helpOpen) { root.helpOpen = false; sheet.focusEditor() }
           else root.dismiss()
+          event.accepted = true
+          return
+        }
+        var ctrl = event.modifiers & Qt.ControlModifier
+        if (ctrl && event.key === Qt.Key_O) {
+          root.toggleTray()
+          event.accepted = true
+          return
+        }
+        if (ctrl && event.key === Qt.Key_N) {
+          root.newSheet()
           event.accepted = true
           return
         }
         // Ctrl+? toggles the syntax help; Ctrl+/ too, for layouts where
         // ? is not Shift+/.
-        var ctrl = event.modifiers & Qt.ControlModifier
         if (ctrl && (event.key === Qt.Key_Question || event.key === Qt.Key_Slash)) {
           root.toggleHelp()
           event.accepted = true
@@ -360,6 +506,46 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Style.space(14)
 
+            // The open sheet's name; opens the tray.
+            Text {
+              id: sheetLink
+              text: "≡ " + root.activeName
+              color: sheetMouse.containsMouse || root.trayOpen ? theme.accent : theme.text
+              font.family: theme.uiFamily
+              font.pixelSize: theme.barTextSize
+              textFormat: Text.PlainText
+              elide: Text.ElideRight
+              width: Math.min(implicitWidth, Style.space(160))
+              anchors.verticalCenter: parent.verticalCenter
+              Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                  root.toggleTray()
+                  event.accepted = true
+                } else if (event.key === Qt.Key_Tab) {
+                  helpLink.forceActiveFocus()
+                  event.accepted = true
+                } else if (event.key === Qt.Key_Backtab) {
+                  sheet.focusEditor()
+                  event.accepted = true
+                }
+              }
+              Rectangle {
+                anchors.fill: parent
+                anchors.margins: -Style.space(3)
+                color: "transparent"
+                border.color: theme.accent
+                border.width: parent.activeFocus ? 1 : 0
+                radius: Style.space(3)
+              }
+              MouseArea {
+                id: sheetMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.toggleTray()
+              }
+            }
+
             BarHint { key: "↵"; label: "new line" }
             BarHint { key: "#"; label: "comment" }
             BarHint { key: ""; label: "click a result to copy" }
@@ -382,7 +568,7 @@ Item {
                   cleanButton.forceActiveFocus()
                   event.accepted = true
                 } else if (event.key === Qt.Key_Backtab) {
-                  sheet.focusEditor()
+                  sheetLink.forceActiveFocus()
                   event.accepted = true
                 }
               }
@@ -478,7 +664,7 @@ Item {
           onEdited: root.scheduleSave()
           onTabPressed: function(backwards) {
             if (backwards) cleanButton.forceActiveFocus()
-            else helpLink.forceActiveFocus()
+            else sheetLink.forceActiveFocus()
           }
         }
 
@@ -486,6 +672,37 @@ Item {
           theme: theme
           visible: root.helpOpen
           anchors.fill: sheet
+        }
+
+        // A click beside the open tray closes it.
+        MouseArea {
+          anchors.fill: sheet
+          visible: root.trayOpen
+          onClicked: root.closeTray()
+        }
+
+        // The tray slides over the left of the sheet.
+        Item {
+          anchors.top: sheet.top
+          anchors.bottom: sheet.bottom
+          anchors.left: sheet.left
+          width: theme.trayWidth
+          clip: true
+
+          SheetTray {
+            id: tray
+            theme: theme
+            sheets: root.sheets
+            activeId: root.activeId
+            width: parent.width
+            height: parent.height
+            x: root.trayOpen ? 0 : -width
+            visible: x > -width
+            Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            onChosen: function(id) { root.switchSheet(id) }
+            onRenamed: function(id, name) { root.renameSheet(id, name) }
+            onCreateRequested: root.newSheet()
+          }
         }
 
         // ---------------------------------------------------- bottom bar
@@ -565,6 +782,7 @@ Item {
   }
 
   function toggleHelp() {
+    trayOpen = false
     helpOpen = !helpOpen
     if (!helpOpen) sheet.focusEditor()
   }

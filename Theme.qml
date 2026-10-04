@@ -70,6 +70,7 @@ QtObject {
   readonly property int rowHeight: Style.space(30)
   readonly property int spacer: Style.space(12)
   readonly property int resultWidth: Style.space(210)
+  readonly property int trayWidth: Style.space(250)
   readonly property int padX: Style.space(18)
   readonly property int resultPadX: Style.space(15)
   readonly property int textSize: Style.fontPx(17 / 12)

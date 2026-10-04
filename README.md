@@ -39,7 +39,7 @@ The update shows you the diff before applying it. The restart is needed because 
 omarchy plugin remove dev.nur.omasum
 ```
 
-That deletes the plugin directory and its entry in `~/.config/omarchy/shell.json`. Remove the `o.bind` line from `bindings.lua` yourself. Your sheet stays at `~/.local/state/omasum/sheet.calc` and the rates cache at `~/.cache/omasum/rates.json`; delete those two directories if you want nothing left behind.
+That deletes the plugin directory and its entry in `~/.config/omarchy/shell.json`. Remove the `o.bind` line from `bindings.lua` yourself. Your sheets stay in `~/.local/state/omasum/` and the rates cache at `~/.cache/omasum/rates.json`; delete those two directories if you want nothing left behind.
 
 ### Dependencies
 
@@ -54,6 +54,7 @@ The plugin writes only to its own two directories above. It never edits your Hyp
 - Lines are numbered in the gutter. Type `@n` and press `Tab` to paste line n's result in its place: the exact value, units included (`@3` → `3.3333333333333335`, `@4` → `(5 kg)` inside a longer expression). A faint preview after the line shows what Tab will insert, or why it can't — Tab only completes when line n has a valid result. It is a copy, not a link, so it won't follow later edits to line n; `Ctrl+Z` turns it back into `@n`.
 - `#` starts a comment, at the start of a line or after an expression.
 - Click a result to copy the bare number. `Escape` hides the sheet and keeps everything; `clean sheet` in the top bar is the only thing that empties it, and `Ctrl+Z` undoes that too.
+- One sheet is the default, but you can keep more. `Ctrl+O` (or the sheet's name in the top bar) opens a tray on the left with every sheet, most recently used first; Omasum always opens on the sheet you used last. `Up`/`Down` and `Enter` switch sheets, `Ctrl+Enter` or a double-click renames one, and `Ctrl+N` (or `+` in the tray) starts a new one.
 - `? syntax` in the top bar (or `Ctrl+?`) opens the full reference.
 
 Some of what it understands:
@@ -69,13 +70,14 @@ Some of what it understands:
 | `255 to hex` · `0b1010 * 2` | `0xFF` · `20` |
 | `sqrt(2) * 10` · `2pi` · `min(1,2)` | `14.1421` · `6.2832` · `1` |
 
-The sheet autosaves to `~/.local/state/omasum/sheet.calc` — plain text, exactly what you typed. Currency rates are fetched from the ECB (via [Frankfurter](https://frankfurter.dev)) and cached in `~/.cache/omasum/rates.json`; a result computed from rates older than a day is tagged `rate`, and without any cache currency conversion says `rates unavailable` while everything else keeps working.
+Sheets autosave to `~/.local/state/omasum/` as plain text, exactly what you typed: the first is `sheet.calc`, later ones `sheet-<id>.calc`, and `sheets.json` keeps their names and order. Currency rates are fetched from the ECB (via [Frankfurter](https://frankfurter.dev)) and cached in `~/.cache/omasum/rates.json`; a result computed from rates older than a day is tagged `rate`, and without any cache currency conversion says `rates unavailable` while everything else keeps working.
 
 ## Hacking on it
 
 ```
-Omasum.qml    the window, bars, help screen, persistence, rates
+Omasum.qml    the window, bars, help screen, sheets and their files, rates
 Sheet.qml     the editor, the coloured layer behind it, the result column
+SheetTray.qml the sheets tray: the list, renaming, the new-sheet button
 Theme.qml     the eleven colour tokens, bound to the shell's Color and Style
 Help.qml      the syntax reference
 engine.js     lexer, parser, units, percentages, bases, formatting, evaluator
