@@ -5,8 +5,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 
-// Omasum panel: the window, its bars, the help screen, persistence and the
-// currency rates. The sheet itself lives in Sheet.qml and every parsing,
+// Omasum panel: the window, its bars, the help screen, the sheets and
+// their files, and the currency rates. The sheet itself lives in Sheet.qml and every parsing,
 // unit and formatting decision in engine.js.
 //
 // Summoned over shell IPC: `omarchy-shell shell toggle dev.nur.omasum`.

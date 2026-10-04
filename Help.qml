@@ -23,13 +23,20 @@ Item {
       ["utils = 190", "190"],
       ["total = rent + utils", "1 640"],
       ["total * 12", "19 680"],
-      ["ans / 4", "4 920"]
+      ["ans / 4", "4 920"],
+      ["ut ⇥  →  utils", "190"]
     ]},
-    { title: "Line results", note: "@n then Tab pastes line n's exact result, units included. It is a copy, not a link: it won't follow later edits to line n.", rows: [
+    { title: "Line results", note: "Lines are numbered in the gutter. @n then Tab pastes line n's exact result, units included; Tab only completes when line n has a valid result. It is a copy, not a link: it won't follow later edits to line n, and Ctrl+Z turns it back into @n.", rows: [
       ["10 / 3", "3.3333"],
       ["@1 ⇥  →  3.3333333333333335", "3.3333"]
     ]},
-    { title: "Sheets", note: "One sheet is all you need, but you can keep more. Ctrl+O or the sheet's name in the top bar opens the tray: most recently used first, and the sheet you used last is the one that opens. Up/Down and Enter switch, Ctrl+Enter or a double-click renames, Ctrl+N or + starts a new one. Ctrl+D or the trash on a row asks to delete that sheet; Ctrl+D or Enter again deletes it for good, Escape keeps it.", rows: [] },
+    { title: "Sheets", note: "One sheet is all you need, but you can keep more. Ctrl+O or the sheet's name in the top bar opens the tray, most recently used first; the sheet you used last is the one that opens. Deleting the open sheet opens the next one.", rows: [
+      ["Up/Down, Enter", "switch sheet"],
+      ["Ctrl+Enter, double-click", "rename"],
+      ["Ctrl+N, +", "new sheet"],
+      ["Ctrl+D, then Ctrl+D or Enter", "delete for good"],
+      ["Escape", "keep it, or close the tray"]
+    ]},
     { title: "Comments", note: "Everything after # is a note, at the start of a line or after an expression. A long line wraps at the result column; its result stays on its first row.", rows: [
       ["# groceries", ""],
       ["rate = 65 eur   # agreed 12 Feb", "65 EUR"]
@@ -58,13 +65,13 @@ Item {
     { title: "Functions", note: "sqrt cbrt abs round floor ceil exp ln log log2 sign sin cos tan asin acos atan min max hypot pow — trig in radians unless given deg. Units stay through abs round floor ceil min max hypot; the rest need plain numbers. Constants pi, e, tau, phi.", rows: [] },
     { title: "Keys", note: "", rows: [
       ["Enter", "new line"],
-      ["Escape", "hide the sheet, keep everything"],
+      ["Escape", "close the tray or this page, else hide"],
       ["Ctrl+?", "this reference"],
       ["Ctrl+O", "sheets tray"],
       ["Ctrl+N", "new sheet"],
-      ["Ctrl+D twice", "delete the selected sheet"],
       ["Tab after @n", "paste line n's result"],
       ["Tab after a partial name", "finish the name"],
+      ["Tab", "otherwise, to the top bar"],
       ["Ctrl+Z", "undo, including clean sheet"],
       ["click a result", "copy the bare number"]
     ]}

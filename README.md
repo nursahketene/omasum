@@ -4,7 +4,7 @@
 
 Omasum is a calculator for Omarchy that works like a notepad: summon it with a key, type lines of plain text, and each line's result appears beside it as you type.
 
-<p align="center"><img src="assets/screenshot.png" width="820" alt="Omasum on the Ristretto theme: a trip budget on the left, results in a column on the right"></p>
+<p align="center"><img src="assets/screenshot.png" width="820" alt="Omasum on the Ristretto theme: a numbered trip budget on the left, results in a column on the right"></p>
 
 It is an [Omarchy 4](https://omarchy.org) shell plugin: QML for the surface, plain JavaScript for the engine, running inside the shell the desktop already keeps alive. No daemon, no binary, no build step. Colours come from the active Omarchy theme and repaint when you switch themes.
 
@@ -49,13 +49,27 @@ The plugin writes only to its own two directories above. It never edits your Hyp
 
 ## Using it
 
-- Every line is live. There is nothing to submit; the sheet re-evaluates as you type.
+- Every line is live. There is nothing to submit; the sheet re-evaluates as you type, and long lines wrap at the result column.
 - `name = value` defines a name for every line below it. `ans` and `last` hold the previous result. Start typing a name and a faint preview after the line offers the closest match with its current value; `Tab` finishes it.
-- Lines are numbered in the gutter. Type `@n` and press `Tab` to paste line n's result in its place: the exact value, units included (`@3` → `3.3333333333333335`, `@4` → `(5 kg)` inside a longer expression). A faint preview after the line shows what Tab will insert, or why it can't — Tab only completes when line n has a valid result. It is a copy, not a link, so it won't follow later edits to line n; `Ctrl+Z` turns it back into `@n`.
-- `#` starts a comment, at the start of a line or after an expression. Long lines wrap at the result column rather than running off the side.
-- Click a result to copy the bare number. `Escape` hides the sheet and keeps everything; `clean sheet` in the top bar is the only thing that empties it, and `Ctrl+Z` undoes that too.
-- One sheet is the default, but you can keep more. `Ctrl+O` (or the sheet's name in the top bar) opens a tray on the left with every sheet, most recently used first; Omasum always opens on the sheet you used last. `Up`/`Down` and `Enter` switch sheets, `Ctrl+Enter` or a double-click renames one, `Ctrl+N` (or `+` in the tray) starts a new one, and `Ctrl+D` (or the trash icon on a row) asks to delete the selected sheet — `Ctrl+D` or `Enter` again deletes it and its file for good, `Escape` keeps it. Deleting the open sheet opens the next most recent one; deleting the last one leaves a fresh empty sheet.
+- Lines are numbered in the gutter. `@n` then `Tab` pastes line n's exact result in its place, units included (`10/3` pastes as `3.3333333333333335`, `5 kg` as `(5 kg)` inside a longer expression). The preview shows what Tab will insert, or why it can't: Tab only completes when line n has a valid result. It is a copy, not a link, so it won't follow later edits to line n; `Ctrl+Z` turns it back into `@n`.
+- `#` starts a comment, at the start of a line or after an expression.
+- Click a result to copy the bare number.
+- `Escape` hides the sheet and keeps everything. `clean sheet` in the top bar empties the open sheet, and `Ctrl+Z` undoes that too.
 - `? syntax` in the top bar (or `Ctrl+?`) opens the full reference.
+
+### Sheets
+
+One sheet is the default, but you can keep as many as you like. `Ctrl+O`, or the sheet's name at the left of the top bar, opens a tray with every sheet, most recently used first. Omasum always opens on the sheet you used last.
+
+| In the tray | |
+| --- | --- |
+| `Up` / `Down`, `Enter` or a click | switch to a sheet |
+| `Ctrl+Enter` or a double-click | rename it; `Enter` saves, `Escape` cancels |
+| `Ctrl+N` or `+` | start a new sheet (works outside the tray too) |
+| `Ctrl+D` or the trash icon | ask to delete; `Ctrl+D` or `Enter` again deletes it and its file for good, `Escape` keeps it |
+| `Escape` | close the tray |
+
+Deleting the open sheet opens the next most recent one; deleting the last one leaves a fresh empty sheet. While the tray is open the bottom bar shows its keys.
 
 Some of what it understands:
 
