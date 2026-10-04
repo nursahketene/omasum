@@ -50,7 +50,7 @@ The plugin writes only to its own two directories above. It never edits your Hyp
 ## Using it
 
 - Every line is live. There is nothing to submit; the sheet re-evaluates as you type.
-- `name = value` defines a name for every line below it. `ans` and `last` hold the previous result.
+- `name = value` defines a name for every line below it. `ans` and `last` hold the previous result. Start typing a name and a faint preview after the line offers the closest match with its current value; `Tab` finishes it.
 - Lines are numbered in the gutter. Type `@n` and press `Tab` to paste line n's result in its place: the exact value, units included (`@3` → `3.3333333333333335`, `@4` → `(5 kg)` inside a longer expression). A faint preview after the line shows what Tab will insert, or why it can't — Tab only completes when line n has a valid result. It is a copy, not a link, so it won't follow later edits to line n; `Ctrl+Z` turns it back into `@n`.
 - `#` starts a comment, at the start of a line or after an expression. Long lines wrap at the result column rather than running off the side.
 - Click a result to copy the bare number. `Escape` hides the sheet and keeps everything; `clean sheet` in the top bar is the only thing that empties it, and `Ctrl+Z` undoes that too.

@@ -34,8 +34,10 @@ Item {
   property var result: ({ lines: [], names: [], resultCount: 0 })
   property string markup: ""
   property int copiedLine: -1
-  // `@n` right before the cursor: { index, lineStart, start, end, line,
-  // text, error, ghostX, ghostY } or null. Tab swaps it for `text`.
+  // What Tab would complete at the cursor, or null: `@n` (kind "line",
+  // swapped for line n's value) or a partly typed name (kind "name", the
+  // rest of the name appended). Fields come from Engine.completeReference
+  // and Engine.completeName, plus { kind, index, lineStart, ghostX, ghostY }.
   property var pending: null
   property string copiedValue: ""
 
@@ -211,6 +213,11 @@ Item {
       var lineStart = text.lastIndexOf("\n", pos - 1) + 1
       var index = text.slice(0, lineStart).split("\n").length - 1
       p = Engine.completeReference(result, index, pos - lineStart, rates)
+      if (p) p.kind = "line"
+      else {
+        p = Engine.completeName(result, index, pos - lineStart)
+        if (p) p.kind = "name"
+      }
       if (p) {
         p.index = index
         p.lineStart = lineStart
@@ -229,6 +236,11 @@ Item {
   function acceptReference() {
     var p = pending
     if (!p || !p.text) return
+    if (p.kind === "name") {
+      insertPlain(p.lineStart + p.end, p.text)
+      editor.cursorPosition = p.lineStart + p.end + p.text.length
+      return
+    }
     var from = p.lineStart + p.start
     editor.remove(from, p.lineStart + p.end)
     insertPlain(from, p.text)
@@ -396,7 +408,11 @@ Item {
           topPadding: sheet.lineInset
           lineHeight: sheet.rowHeight
           lineHeightMode: Text.FixedHeight
+          // A name shows its current value and how many others match.
           text: !sheet.pending ? ""
+            : sheet.pending.kind === "name"
+              ? "⇥ " + sheet.pending.name + "  " + sheet.pending.value.replace(sheet.thinSpaces, " ")
+                + (sheet.pending.more > 0 ? "  +" + sheet.pending.more : "")
             : sheet.pending.text ? "⇥ " + sheet.pending.text
             : sheet.pending.error
           color: sheet.theme.muted
@@ -455,10 +471,15 @@ Item {
           Keys.onPressed: function(event) {
             var ctrl = event.modifiers & Qt.ControlModifier
             var shift = event.modifiers & Qt.ShiftModifier
+            // A bare modifier is not an edit; Ctrl on its way to Ctrl+Z
+            // must not end the undo pairing.
+            if (event.key === Qt.Key_Control || event.key === Qt.Key_Shift
+                || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta) return
             var paired = sheet.referenceUndo
             sheet.referenceUndo = false
-            // Tab after `@n` pastes line n's value; with no valid value it
-            // does nothing rather than leave the editor.
+            // Tab completes what the preview offers: `@n` becomes line n's
+            // value, a partly typed name its full name. An `@n` with no
+            // valid value does nothing rather than leave the editor.
             if (event.key === Qt.Key_Tab && !shift && sheet.pending) {
               sheet.acceptReference()
               event.accepted = true

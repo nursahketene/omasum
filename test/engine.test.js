@@ -322,3 +322,36 @@ test("currency symbols colour as units", () => {
   const spans = Engine.colourLine("120€ to £", {}, null, null)
   assert.deepEqual(spans.filter(s => s[2] === "unit").map(s => s[0]), [3, 8])
 })
+
+// Name completion: the rest of a name defined above, for Tab to insert.
+function completeN(text, index, col) {
+  const s = Engine.evaluateSheet(text)
+  const lines = text.split("\n")
+  return Engine.completeName(s, index, col === undefined ? lines[index].length : col)
+}
+
+test("name completion: offers the rest of a name defined above", () => {
+  const r = completeN("rent = 1450\nre", 1)
+  assert.deepEqual([r.name, r.text, r.start, r.end, r.more], ["rent", "nt", 0, 2, 0])
+  assert.equal(r.value, `1${T}450`)
+  assert.equal(completeN("rent = 1450\n2 * Re", 1).text, "nt")
+  assert.equal(completeN("rent = 1450\nre + 2", 1, 2).text, "nt")
+})
+
+test("name completion: shortest match first, then the latest defined", () => {
+  const r = completeN("rates = 2\nrate = 1\nrentals = 3\nr", 3)
+  assert.equal(r.name, "rate")
+  assert.equal(r.more, 2)
+  assert.equal(completeN("rb = 1\nra = 2\nr", 2).name, "ra")
+})
+
+test("name completion: only where a name is being typed", () => {
+  assert.equal(completeN("rent = 1450\nrent", 1), null)
+  assert.equal(completeN("rent = 1450\nrex", 1), null)
+  assert.equal(completeN("rent = 1450\nreq", 1, 2), null)
+  assert.equal(completeN("rent = 1450\n# re", 1), null)
+  assert.equal(completeN("rent = 1450\n2re", 1), null)
+  assert.equal(completeN("re\nrent = 1450", 0), null)
+  assert.equal(completeN("rent = 1450\n", 1), null)
+  assert.equal(completeN("rent = 2 +\nre", 1), null)
+})

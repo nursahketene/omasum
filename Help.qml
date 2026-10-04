@@ -18,7 +18,7 @@ Item {
       ["10 % 3", "1"],
       ["sqrt(2) * 10", "14.1421"]
     ]},
-    { title: "Names", note: "name = value binds a name for every line below it. ans and last hold the previous result.", rows: [
+    { title: "Names", note: "name = value binds a name for every line below it. ans and last hold the previous result. Start typing a name and a faint preview offers the closest one with its value; Tab finishes it.", rows: [
       ["rent = 1450", "1 450"],
       ["utils = 190", "190"],
       ["total = rent + utils", "1 640"],
@@ -64,6 +64,7 @@ Item {
       ["Ctrl+N", "new sheet"],
       ["Ctrl+D twice", "delete the selected sheet"],
       ["Tab after @n", "paste line n's result"],
+      ["Tab after a partial name", "finish the name"],
       ["Ctrl+Z", "undo, including clean sheet"],
       ["click a result", "copy the bare number"]
     ]}

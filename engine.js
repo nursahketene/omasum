@@ -772,6 +772,44 @@ function completeReference(sheet, index, col, rates) {
   return out
 }
 
+// A partly typed name right before the cursor, completed from the names
+// defined above line `index`. Returns null when there is nothing to offer,
+// otherwise { start, end, name, text, value, more }: `text` is the rest of
+// the name that Tab inserts, `value` its current display, `more` how many
+// other names also match. The shortest match wins, then the latest defined.
+function completeName(sheet, index, col) {
+  var current = sheet.lines[index]
+  if (!current) return null
+  var raw = current.raw
+  if (col < raw.length && isIdentChar(raw.charAt(col))) return null
+  var start = col
+  while (start > 0 && isIdentChar(raw.charAt(start - 1))) start--
+  if (start === col || !isIdentStart(raw.charAt(start))) return null
+  if (start > 0 && (isDigit(raw.charAt(start - 1)) || raw.charAt(start - 1) === "@")) return null
+  if (raw.slice(0, start).indexOf("#") !== -1) return null
+
+  var prefix = raw.slice(start, col).toLowerCase()
+  var latest = {}
+  var order = []
+  for (var i = 0; i < index; i++) {
+    var line = sheet.lines[i]
+    if (line.kind !== "assign" || !line.name) continue
+    if (!Object.prototype.hasOwnProperty.call(latest, line.name)) order.push(line.name)
+    latest[line.name] = { line: i, value: line.display }
+  }
+  if (Object.prototype.hasOwnProperty.call(latest, prefix)) return null
+  var matches = order.filter(function(n) { return n.indexOf(prefix) === 0 })
+  if (matches.length === 0) return null
+  matches.sort(function(a, b) {
+    return a.length - b.length || latest[b].line - latest[a].line
+  })
+  var best = matches[0]
+  return {
+    start: start, end: col, name: best, text: best.slice(prefix.length),
+    value: latest[best].value, more: matches.length - 1
+  }
+}
+
 // ---------------------------------------------------------------- colouring
 
 // Classes: comment, number, op, unit, keyword, func, const, name, unknown,
@@ -865,6 +903,7 @@ var Engine = {
   renderMarkup: renderMarkup,
   colourLine: colourLine,
   completeReference: completeReference,
+  completeName: completeName,
   formatPlain: formatPlain,
   formatBase: formatBase,
   unitKey: unitKey,
