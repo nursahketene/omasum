@@ -574,13 +574,14 @@ function splitConversion(code) {
 // throws for user errors, which come back as { error }.
 function evaluateLine(code, ctx) {
   var trimmed = code.replace(/^\s+|\s+$/g, "")
-  var result = { value: NaN, unit: null, percent: false, base: null, usedRate: false, error: null, name: null }
+  var result = { value: NaN, unit: null, percent: false, base: null, usedRate: false, error: null, name: null, written: null }
   if (!trimmed) return null
 
   var body = trimmed
   var am = ASSIGN_RE.exec(trimmed)
   if (am) {
     result.name = am[1].toLowerCase()
+    result.written = am[1]
     body = am[2].replace(/^\s+|\s+$/g, "")
     if (RESERVED.indexOf(result.name) !== -1) {
       result.error = "can't assign to " + am[1]
@@ -658,14 +659,18 @@ function evaluatePercentOrExpression(code, ctx) {
 // ---------------------------------------------------------------- sheet
 
 // Walks the sheet top to bottom. Returns { lines, names, resultCount }.
-// Each line: { index, raw, code, comment, kind, name, value, unit, percent,
-// base, display, plain, error, usedRate, spans }.
+// Each line: { index, raw, code, comment, kind, name, written, value, unit,
+// percent, base, display, plain, error, usedRate, spans }. `name` is the
+// lowercased key names are looked up by; `written` is the name as typed.
+// `names` lists the defined names in order of first definition, each
+// written as its latest definition writes it.
 function evaluateSheet(text, options) {
   var opts = options || {}
   var rates = opts.rates || null
   var rawLines = String(text || "").split("\n")
   var scope = {}
-  var names = []
+  var order = []
+  var written = {}
   var ans = null
   var lines = []
   var resultCount = 0
@@ -677,11 +682,12 @@ function evaluateSheet(text, options) {
     var r = evaluateLine(parts.code, ctx)
     var line = {
       index: i, raw: raw, code: parts.code, comment: parts.comment,
-      kind: "blank", name: null, value: NaN, unit: null, percent: false, base: null,
+      kind: "blank", name: null, written: null, value: NaN, unit: null, percent: false, base: null,
       display: "", plain: "", error: null, usedRate: false, spans: []
     }
     if (r) {
       line.name = r.name
+      line.written = r.written
       if (r.error) {
         line.kind = "error"
         line.error = r.error
@@ -697,8 +703,9 @@ function evaluateSheet(text, options) {
         line.display = formatDisplay(r, rates)
         resultCount++
         if (r.name) {
-          if (!Object.prototype.hasOwnProperty.call(scope, r.name)) names.push(r.name)
+          if (!Object.prototype.hasOwnProperty.call(scope, r.name)) order.push(r.name)
           scope[r.name] = { v: r.value, unit: r.unit }
+          written[r.name] = r.written
         }
         if (isFinite(r.value)) ans = { v: r.value, unit: r.unit }
       }
@@ -708,6 +715,7 @@ function evaluateSheet(text, options) {
     line.spans = colourLine(raw, scope, r && r.name ? r.name : null, rates)
     lines.push(line)
   }
+  var names = order.map(function(n) { return written[n] })
   return { lines: lines, names: names, resultCount: resultCount }
 }
 
@@ -797,8 +805,7 @@ function completeName(sheet, index, col) {
     var line = sheet.lines[i]
     if (line.kind !== "assign" || !line.name) continue
     if (!Object.prototype.hasOwnProperty.call(latest, line.name)) order.push(line.name)
-    var am = ASSIGN_RE.exec(line.code.replace(/^\s+/, ""))
-    latest[line.name] = { line: i, value: line.display, written: am ? am[1] : line.name }
+    latest[line.name] = { line: i, value: line.display, written: line.written }
   }
   if (Object.prototype.hasOwnProperty.call(latest, prefix)) return null
   var matches = order.filter(function(n) { return n.indexOf(prefix) === 0 })

@@ -363,3 +363,8 @@ test("name completion: keeps the name's case as defined", () => {
   assert.equal(completeN("  Total = 1\ntot", 1).text, "Total")
   assert.equal(completeN("Rate = 1\nRATE = 2\nra", 2).text, "RATE")
 })
+
+test("scope names keep their case, as the latest definition writes it", () => {
+  assert.deepEqual(Engine.evaluateSheet("monthlyRent = 1450\nVAT = 20%\nmonthlyRent * 12").names, ["monthlyRent", "VAT"])
+  assert.deepEqual(Engine.evaluateSheet("Rate = 1\nb = 2\nRATE = 3").names, ["RATE", "b"])
+})
