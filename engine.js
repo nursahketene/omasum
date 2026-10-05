@@ -774,9 +774,11 @@ function completeReference(sheet, index, col, rates) {
 
 // A partly typed name right before the cursor, completed from the names
 // defined above line `index`. Returns null when there is nothing to offer,
-// otherwise { start, end, name, text, value, more }: `text` is the rest of
-// the name that Tab inserts, `value` its current display, `more` how many
-// other names also match. The shortest match wins, then the latest defined.
+// otherwise { start, end, name, text, value, more }: Tab replaces columns
+// start..end with `text`, the whole name as its latest definition writes it
+// (matching ignores case, the completion keeps it); `value` is its current
+// display, `more` how many other names also match. The shortest match wins,
+// then the latest defined.
 function completeName(sheet, index, col) {
   var current = sheet.lines[index]
   if (!current) return null
@@ -795,7 +797,8 @@ function completeName(sheet, index, col) {
     var line = sheet.lines[i]
     if (line.kind !== "assign" || !line.name) continue
     if (!Object.prototype.hasOwnProperty.call(latest, line.name)) order.push(line.name)
-    latest[line.name] = { line: i, value: line.display }
+    var am = ASSIGN_RE.exec(line.code.replace(/^\s+/, ""))
+    latest[line.name] = { line: i, value: line.display, written: am ? am[1] : line.name }
   }
   if (Object.prototype.hasOwnProperty.call(latest, prefix)) return null
   var matches = order.filter(function(n) { return n.indexOf(prefix) === 0 })
@@ -803,10 +806,10 @@ function completeName(sheet, index, col) {
   matches.sort(function(a, b) {
     return a.length - b.length || latest[b].line - latest[a].line
   })
-  var best = matches[0]
+  var best = latest[matches[0]]
   return {
-    start: start, end: col, name: best, text: best.slice(prefix.length),
-    value: latest[best].value, more: matches.length - 1
+    start: start, end: col, name: best.written, text: best.written,
+    value: best.value, more: matches.length - 1
   }
 }
 

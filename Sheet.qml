@@ -229,18 +229,14 @@ Item {
     pending = p
   }
 
-  // Swaps `@n` for line n's value. The remove and the insert are two steps
+  // Swaps `@n` for line n's value, or a partly typed name for the whole
+  // name as defined, case included. The remove and the insert are two steps
   // on the editor's undo stack; `referenceUndo` lets one Ctrl+Z take both
   // back while nothing else has been typed since.
   property bool referenceUndo: false
   function acceptReference() {
     var p = pending
     if (!p || !p.text) return
-    if (p.kind === "name") {
-      insertPlain(p.lineStart + p.end, p.text)
-      editor.cursorPosition = p.lineStart + p.end + p.text.length
-      return
-    }
     var from = p.lineStart + p.start
     editor.remove(from, p.lineStart + p.end)
     insertPlain(from, p.text)

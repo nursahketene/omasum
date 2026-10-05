@@ -332,10 +332,10 @@ function completeN(text, index, col) {
 
 test("name completion: offers the rest of a name defined above", () => {
   const r = completeN("rent = 1450\nre", 1)
-  assert.deepEqual([r.name, r.text, r.start, r.end, r.more], ["rent", "nt", 0, 2, 0])
+  assert.deepEqual([r.name, r.text, r.start, r.end, r.more], ["rent", "rent", 0, 2, 0])
   assert.equal(r.value, `1${T}450`)
-  assert.equal(completeN("rent = 1450\n2 * Re", 1).text, "nt")
-  assert.equal(completeN("rent = 1450\nre + 2", 1, 2).text, "nt")
+  assert.deepEqual(completeN("rent = 1450\n2 * Re", 1).text, "rent")
+  assert.equal(completeN("rent = 1450\nre + 2", 1, 2).text, "rent")
 })
 
 test("name completion: shortest match first, then the latest defined", () => {
@@ -354,4 +354,12 @@ test("name completion: only where a name is being typed", () => {
   assert.equal(completeN("re\nrent = 1450", 0), null)
   assert.equal(completeN("rent = 1450\n", 1), null)
   assert.equal(completeN("rent = 2 +\nre", 1), null)
+})
+
+test("name completion: keeps the name's case as defined", () => {
+  const r = completeN("monthlyRent = 1450\nmon", 1)
+  assert.deepEqual([r.name, r.text, r.start, r.end], ["monthlyRent", "monthlyRent", 0, 3])
+  assert.equal(completeN("monthlyRent = 1450\n2 * MONTH", 1).text, "monthlyRent")
+  assert.equal(completeN("  Total = 1\ntot", 1).text, "Total")
+  assert.equal(completeN("Rate = 1\nRATE = 2\nra", 2).text, "RATE")
 })
