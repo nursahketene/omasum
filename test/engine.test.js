@@ -368,3 +368,40 @@ test("scope names keep their case, as the latest definition writes it", () => {
   assert.deepEqual(Engine.evaluateSheet("monthlyRent = 1450\nVAT = 20%\nmonthlyRent * 12").names, ["monthlyRent", "VAT"])
   assert.deepEqual(Engine.evaluateSheet("Rate = 1\nb = 2\nRATE = 3").names, ["RATE", "b"])
 })
+
+// x as a times sign, between two values.
+test("x multiplies between two values", () => {
+  const d = s => Engine.evaluateSheet(s).lines.map(l => l.display)
+  assert.deepEqual(d("3 x 4"), ["12"])
+  assert.deepEqual(d("3x4"), ["12"])
+  assert.deepEqual(d("3 X 4"), ["12"])
+  assert.deepEqual(d("10x10"), ["100"])
+  assert.deepEqual(d("(2+3)x4"), ["20"])
+  assert.deepEqual(d("(2+3) x 4"), ["20"])
+  assert.deepEqual(d("2 x (3+1)"), ["8"])
+  assert.deepEqual(d("1.5x.5"), ["0.75"])
+  assert.deepEqual(d("3 x -2"), ["-6"])
+  assert.deepEqual(d("2 + 3 x 4"), ["14"])
+  assert.deepEqual(d("95 eur x 4"), [`380${T}EUR`])
+  assert.deepEqual(d("rent = 1450\nrent x 12"), [`1${T}450`, `17${T}400`])
+  assert.deepEqual(d("12 x 3 km to m"), [`36${T}000${T}m`])
+})
+
+test("x stays a letter everywhere else", () => {
+  const d = s => Engine.evaluateSheet(s).lines.map(l => l.display)
+  assert.deepEqual(d("0x10"), ["16"])
+  assert.deepEqual(d("0xff x 2"), ["510"])
+  assert.deepEqual(d("x = 5\n2x\nx * 2\nx"), ["5", "10", "10", "5"])
+  assert.deepEqual(d("x = 5\n2 x - 1"), ["5", "9"])
+  assert.deepEqual(d("x = 5\n3 x 4"), ["5", "12"])
+  assert.deepEqual(d("max(2, 3) x 2"), ["6"])
+  assert.deepEqual(d("xmas = 3\nxmas x 2"), ["3", "6"])
+  assert.equal(Engine.evaluateSheet("3 x").lines[0].error, "x is not defined")
+})
+
+test("x colours as an operator where it multiplies", () => {
+  const cls = (s, scope) => Engine.colourLine(s, scope || {}, null, null).filter(sp => s.slice(sp[0], sp[1]).toLowerCase() === "x").map(sp => sp[2])
+  assert.deepEqual(cls("3 x 4"), ["op"])
+  assert.deepEqual(cls("3x4"), ["op"])
+  assert.deepEqual(cls("3 x 4", { x: { v: 5 } }), ["name"])
+})

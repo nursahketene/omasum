@@ -76,6 +76,7 @@ Some of what it understands:
 | Type | Result |
 | --- | --- |
 | `2 + 3 * (4 - 1)^2` | `29` |
+| `3 x 4` · `3x4` · `rent x 12` | `x` multiplies between two values, like `*` and `×`; `0x1F` stays hex |
 | `1_000_000 / 7` | `142 857.14` |
 | `18% of 240` · `240 + 18%` · `84 as % of 400` | `43.2` · `283.2` · `21 %` |
 | `20 km to miles` · `92 f to c` · `90 min in h` | `12.4274 mi` · `33.3333 °C` · `1.5 h` |

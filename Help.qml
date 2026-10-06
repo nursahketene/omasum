@@ -10,8 +10,9 @@ Item {
   required property var theme
 
   readonly property var sections: [
-    { title: "Arithmetic", note: "Each line is an expression. The result appears on the right and updates as you type.", rows: [
+    { title: "Arithmetic", note: "Each line is an expression. The result appears on the right and updates as you type. x and × multiply too, between two values; 0x stays hex.", rows: [
       ["2 + 3 * (4 - 1)^2", "29"],
+      ["3 x 4  ·  3x4", "12"],
       ["3(4+1)", "15"],
       ["2pi", "6.2832"],
       ["1_000_000 / 7", "142 857.14"],

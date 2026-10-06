@@ -279,6 +279,18 @@ function readNumber(src, i) {
 
 var OPERATORS = "+-*/^%(),="
 
+// `x` written straight after a number or `)` and straight before a number,
+// `(` or `.5` is a times sign: `3x4`, `(2+3)x4`. A lone 0 before it is the
+// hex prefix instead, which readNumber has already taken.
+function isTimesX(src, i) {
+  var ch = src.charAt(i)
+  if (ch !== "x" && ch !== "X") return false
+  var before = src.charAt(i - 1)
+  if (!isDigit(before) && before !== ")") return false
+  var after = src.charAt(i + 1)
+  return isDigit(after) || after === "(" || (after === "." && isDigit(src.charAt(i + 2)))
+}
+
 function lex(code) {
   var src = rewrite(code)
   var tokens = []
@@ -292,6 +304,11 @@ function lex(code) {
       if (!num) throw new EngineError("bad number")
       tokens.push({ type: "num", value: num.value, text: src.slice(i, num.end) })
       i = num.end
+      continue
+    }
+    if (isTimesX(src, i)) {
+      tokens.push({ type: "op", text: "*" })
+      i++
       continue
     }
     if (isIdentStart(ch)) {
@@ -377,10 +394,29 @@ Parser.prototype.startsAtom = function() {
   return t.type === "op" && t.text === "("
 }
 
+// A standalone `x` between two values is a times sign: `3 x 4`, `rent x 12`.
+// Followed by a minus it is one only when no name `x` is defined, so
+// `2 x - 1` still means 2·x − 1 for someone who set x.
+Parser.prototype.isTimesWord = function() {
+  var t = this.peek()
+  if (!t || t.type !== "ident" || t.text.toLowerCase() !== "x") return false
+  var after = this.tokens[this.pos + 1]
+  if (!after) return false
+  if (after.type === "num" || after.type === "ident") return true
+  if (after.type !== "op") return false
+  if (after.text === "(") return true
+  return (after.text === "-" || after.text === "+")
+    && !Object.prototype.hasOwnProperty.call(this.ctx.scope, "x")
+}
+
 Parser.prototype.parseMul = function() {
   var left = this.parseUnary()
   for (;;) {
-    if (this.isOp("*") || this.isOp("/") || this.isOp("%")) {
+    if (this.isTimesWord()) {
+      this.next()
+      var times = this.parseUnary()
+      left = val(left.v * times.v, left.unit || times.unit)
+    } else if (this.isOp("*") || this.isOp("/") || this.isOp("%")) {
       var op = this.next().text
       var right = this.parseUnary()
       if (op === "*") left = val(left.v * right.v, left.unit || right.unit)
@@ -828,6 +864,8 @@ function completeName(sheet, index, col) {
 function classifyWord(word, scope, definingName, rates) {
   var w = word.toLowerCase()
   if (definingName && w === definingName) return "name"
+  // A standalone x reads as times unless a name x is defined.
+  if (w === "x" && !Object.prototype.hasOwnProperty.call(scope, "x")) return "op"
   if (Object.prototype.hasOwnProperty.call(scope, w)) return "name"
   if (KEYWORDS.indexOf(w) !== -1) return "keyword"
   if (Object.prototype.hasOwnProperty.call(FUNCTIONS, w)) return "func"
@@ -844,6 +882,11 @@ function colourLine(raw, scope, definingName, rates) {
   var n = code.length
   while (i < n) {
     var ch = code.charAt(i)
+    if (isTimesX(code, i)) {
+      spans.push([i, i + 1, "op"])
+      i++
+      continue
+    }
     if (isIdentStart(ch)) {
       var s = i
       while (i < n && isIdentChar(code.charAt(i))) i++
