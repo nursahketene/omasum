@@ -493,8 +493,12 @@ Item {
               return
             }
             // Paste as plain text: the document is rich only for its row
-            // height, and pasted markup must never reach it.
-            if ((ctrl && event.key === Qt.Key_V) || (shift && event.key === Qt.Key_Insert)) {
+            // height, and pasted markup must never reach it. Every key
+            // the platform maps to Paste is caught (Ctrl+V, Shift+Insert),
+            // plus the dedicated Paste key, which Qt's native rich-text
+            // paste would otherwise take, images and all.
+            if (event.matches(StandardKey.Paste) || event.key === Qt.Key_Paste
+                || (ctrl && event.key === Qt.Key_V) || (shift && event.key === Qt.Key_Insert)) {
               sheet.pasteAtCursor(Quickshell.clipboardText)
               event.accepted = true
               return
@@ -508,6 +512,23 @@ Item {
               sheet.insertPlain(0, restore)
               editor.cursorPosition = editor.length
               event.accepted = true
+            }
+          }
+
+          // Drops from other apps take the same rich-text path as a native
+          // paste, so they land here instead: every drag is accepted, so
+          // none falls through to the editor, and only plain text goes in.
+          DropArea {
+            anchors.fill: parent
+            onEntered: function(drag) { drag.accept(Qt.CopyAction) }
+            onDropped: function(drop) {
+              if (drop.hasText) {
+                var at = editor.positionAt(drop.x, drop.y)
+                editor.cursorPosition = at
+                sheet.insertPlain(at, drop.text)
+                editor.forceActiveFocus()
+              }
+              drop.accept(Qt.CopyAction)
             }
           }
 
