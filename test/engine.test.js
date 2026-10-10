@@ -418,3 +418,37 @@ test("units: money times another unit is money, in either order", () => {
   assert.deepEqual(d("2 km * 3 kg"), [`6${T}km`])
   assert.deepEqual(d("3 eur * 2 usd"), [`6${T}EUR`])
 })
+
+// Same kind over same kind, and distance, time and speed together.
+test("units: same kind divided is a plain ratio", () => {
+  const d = s => Engine.evaluateSheet(s).lines[0].display
+  assert.equal(d("5 km / 2 km"), "2.5")
+  assert.equal(d("5 km / 500 m"), "10")
+  assert.equal(d("3 h / 30 min"), "6")
+  assert.equal(d("1 GB / 1 MB"), `1${T}000`)
+  assert.equal(d("100 eur / 20 eur"), "5")
+})
+
+test("units: distance, time and speed", () => {
+  const d = s => Engine.evaluateSheet(s).lines[0].display
+  assert.equal(d("100 km / 2 h"), `50${T}km/h`)
+  assert.equal(d("90 km/h"), `90${T}km/h`)
+  assert.equal(d("90 km/h * 2 h"), `180${T}km`)
+  assert.equal(d("90 kmh * 2 h"), `180${T}km`)
+  assert.equal(d("2 h * 90 kmh"), `180${T}km`)
+  assert.equal(d("90 kmh * 30 min"), `45${T}km`)
+  assert.equal(d("300 km / 90 kmh"), `3.3333${T}h`)
+  assert.equal(d("60 mi / 1.5 h"), `40${T}mph`)
+  assert.equal(d("60 mph * 2 h"), `120${T}mi`)
+  assert.equal(d("120 mi / 60 mph"), `2${T}h`)
+  assert.equal(d("5000 m / 20 min"), `15${T}km/h`)
+  assert.equal(d("100 km / 2 h to mph"), `31.0686${T}mph`)
+  assert.equal(d("leg = 312 km\nleg / 4 h"), `312${T}km`)
+  assert.equal(Engine.evaluateSheet("leg = 312 km\nleg / 4 h").lines[1].display, `78${T}km/h`)
+})
+
+test("units: length times length is an error until there are area units", () => {
+  assert.equal(Engine.evaluateSheet("3 m * 4 m").lines[0].error, "area isn't supported")
+  assert.equal(Engine.evaluateSheet("3 m x 4 km").lines[0].error, "area isn't supported")
+  assert.equal(Engine.evaluateSheet("3 m * 4").lines[0].display, `12${T}m`)
+})

@@ -42,13 +42,17 @@ Item {
       ["# groceries", ""],
       ["rate = 65 eur   # agreed 12 Feb", "65 EUR"]
     ]},
-    { title: "Units", note: "A unit tags a value; to, in, into or as converts it. Plurals and long names work.", rows: [
+    { title: "Units", note: "A unit tags a value; to, in, into or as converts it. Plurals and long names work. Money times anything is money, distance over time is a speed, and the same kind over the same kind is a plain number. Length times length is an error for now: there are no area units yet.", rows: [
       ["20 km to miles", "12.4274 mi"],
       ["5 in to cm", "12.7 cm"],
       ["92 f to c", "33.3333 °C"],
       ["90 min in h", "1.5 h"],
       ["2.5 GB to MiB", "2 384.19 MiB"],
       ["2 km + 300 m", "2.3 km"],
+      ["100 km / 2 h", "50 km/h"],
+      ["90 km/h * 30 min", "45 km"],
+      ["5 km / 500 m", "10"],
+      ["6 hours * 75 €", "450 EUR"],
       ["$120 in eur", "rates from the ECB"],
       ["45€ to £", "symbols before or after"]
     ]},

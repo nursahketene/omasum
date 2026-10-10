@@ -329,19 +329,60 @@ function lex(code) {
 
 // ---------------------------------------------------------------- values
 
-// A value carries an optional unit. The first unit seen in an expression
-// wins for * and / (except that money wins a product, see productUnit);
-// + and - convert the right side into the left's unit.
+// A value carries an optional unit. + and - convert the right side into
+// the left's unit; * and / follow multiply and divide below.
 function val(v, unit) { return { v: v, unit: unit || null } }
 
-// The unit of a product. Money times anything else is money, whichever
-// comes first, so `6 hours * 75 eur` and `75 eur * 6 hours` both give euros;
-// otherwise the first unit wins.
-function productUnit(a, b, rates) {
-  if (a.unit && b.unit && a.unit !== b.unit
-      && unitDimension(b.unit, rates) === "currency" && unitDimension(a.unit, rates) !== "currency")
-    return b.unit
-  return a.unit || b.unit
+// Converts `v` and records a rate lookup on the context.
+function convertIn(v, from, to, ctx) {
+  var conv = convertUnits(v, from, to, ctx.rates)
+  if (conv.usedRate) ctx.usedRate = true
+  return conv.v
+}
+
+// A product of two values. A few unit pairs mean something; for the rest
+// the first unit wins.
+//   money × anything else  money, whichever side it is on
+//   speed × time           distance: mi for mph, km otherwise
+//   length × length        an error, since there are no area units yet
+function multiply(a, b, ctx) {
+  if (a.unit && b.unit) {
+    var da = unitDimension(a.unit, ctx.rates)
+    var db = unitDimension(b.unit, ctx.rates)
+    if (da === "currency" && db !== "currency") return val(a.v * b.v, a.unit)
+    if (db === "currency" && da !== "currency") return val(a.v * b.v, b.unit)
+    if (da === "length" && db === "length") throw new EngineError("area isn't supported")
+    if (da === "speed" && db === "time") return speedTimesTime(a, b, ctx)
+    if (db === "speed" && da === "time") return speedTimesTime(b, a, ctx)
+  }
+  return val(a.v * b.v, a.unit || b.unit)
+}
+
+function speedTimesTime(speed, time, ctx) {
+  var miles = speed.unit === "mph"
+  var perHour = convertIn(speed.v, speed.unit, miles ? "mph" : "kmh", ctx)
+  return val(perHour * convertIn(time.v, time.unit, "h", ctx), miles ? "mi" : "km")
+}
+
+// A quotient of two values. Same kind over same kind is a plain ratio,
+// converted first (`5 km / 500 m` is 10); distance over time is a speed and
+// distance over speed a time, in miles when the miles side asks for it.
+// Otherwise the numerator's unit wins.
+function divide(a, b, ctx) {
+  if (a.unit && b.unit) {
+    var da = unitDimension(a.unit, ctx.rates)
+    var db = unitDimension(b.unit, ctx.rates)
+    if (da === db) return val(a.v / convertIn(b.v, b.unit, a.unit, ctx), null)
+    if (da === "length" && db === "time") {
+      var mi = a.unit === "mi"
+      return val(convertIn(a.v, a.unit, mi ? "mi" : "km", ctx) / convertIn(b.v, b.unit, "h", ctx), mi ? "mph" : "kmh")
+    }
+    if (da === "length" && db === "speed") {
+      var mph = b.unit === "mph"
+      return val(convertIn(a.v, a.unit, mph ? "mi" : "km", ctx) / convertIn(b.v, b.unit, mph ? "mph" : "kmh", ctx), "h")
+    }
+  }
+  return val(a.v / b.v, a.unit || b.unit)
 }
 
 function combineAdd(a, b, sign, ctx) {
@@ -420,23 +461,45 @@ Parser.prototype.isTimesWord = function() {
     && !Object.prototype.hasOwnProperty.call(this.ctx.scope, "x")
 }
 
+// The right side of *, / or x: a value with any unit words straight after
+// it, so `5 km / 2 km` divides by 2 km rather than dividing by 2 and then
+// multiplying by km. A word counts only when it is a unit and nothing
+// else here: not a name in scope, a function call, a constant or the x
+// times sign.
+Parser.prototype.parseQuantity = function() {
+  var v = this.parseUnary()
+  for (;;) {
+    var t = this.peek()
+    if (!t || t.type !== "ident") return v
+    var name = t.text.toLowerCase()
+    if (name === "x" || Object.prototype.hasOwnProperty.call(this.ctx.scope, name)
+        || Object.prototype.hasOwnProperty.call(CONSTANTS, name)) return v
+    var after = this.tokens[this.pos + 1]
+    if (after && after.type === "op" && after.text === "(" && Object.prototype.hasOwnProperty.call(FUNCTIONS, name)) return v
+    var unit = unitKey(name, this.ctx.rates)
+    if (!unit) return v
+    this.next()
+    v = multiply(v, val(1, unit), this.ctx)
+  }
+}
+
 Parser.prototype.parseMul = function() {
   var left = this.parseUnary()
   for (;;) {
     if (this.isTimesWord()) {
       this.next()
-      var times = this.parseUnary()
-      left = val(left.v * times.v, productUnit(left, times, this.ctx.rates))
+      var times = this.parseQuantity()
+      left = multiply(left, times, this.ctx)
     } else if (this.isOp("*") || this.isOp("/") || this.isOp("%")) {
       var op = this.next().text
-      var right = this.parseUnary()
-      if (op === "*") left = val(left.v * right.v, productUnit(left, right, this.ctx.rates))
-      else if (op === "/") left = val(left.v / right.v, left.unit || right.unit)
+      var right = this.parseQuantity()
+      if (op === "*") left = multiply(left, right, this.ctx)
+      else if (op === "/") left = divide(left, right, this.ctx)
       else left = val(left.v % right.v, left.unit || right.unit)
     } else if (this.startsAtom()) {
       // Implicit multiplication: `20 km`, `2pi`, `3(4+1)`.
       var r = this.parseUnary()
-      left = val(left.v * r.v, productUnit(left, r, this.ctx.rates))
+      left = multiply(left, r, this.ctx)
     } else {
       return left
     }
