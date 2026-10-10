@@ -330,8 +330,19 @@ function lex(code) {
 // ---------------------------------------------------------------- values
 
 // A value carries an optional unit. The first unit seen in an expression
-// wins for * and /; + and - convert the right side into the left's unit.
+// wins for * and / (except that money wins a product, see productUnit);
+// + and - convert the right side into the left's unit.
 function val(v, unit) { return { v: v, unit: unit || null } }
+
+// The unit of a product. Money times anything else is money, whichever
+// comes first, so `6 hours * 75 eur` and `75 eur * 6 hours` both give euros;
+// otherwise the first unit wins.
+function productUnit(a, b, rates) {
+  if (a.unit && b.unit && a.unit !== b.unit
+      && unitDimension(b.unit, rates) === "currency" && unitDimension(a.unit, rates) !== "currency")
+    return b.unit
+  return a.unit || b.unit
+}
 
 function combineAdd(a, b, sign, ctx) {
   if (a.unit && b.unit && a.unit !== b.unit) {
@@ -415,17 +426,17 @@ Parser.prototype.parseMul = function() {
     if (this.isTimesWord()) {
       this.next()
       var times = this.parseUnary()
-      left = val(left.v * times.v, left.unit || times.unit)
+      left = val(left.v * times.v, productUnit(left, times, this.ctx.rates))
     } else if (this.isOp("*") || this.isOp("/") || this.isOp("%")) {
       var op = this.next().text
       var right = this.parseUnary()
-      if (op === "*") left = val(left.v * right.v, left.unit || right.unit)
+      if (op === "*") left = val(left.v * right.v, productUnit(left, right, this.ctx.rates))
       else if (op === "/") left = val(left.v / right.v, left.unit || right.unit)
       else left = val(left.v % right.v, left.unit || right.unit)
     } else if (this.startsAtom()) {
       // Implicit multiplication: `20 km`, `2pi`, `3(4+1)`.
       var r = this.parseUnary()
-      left = val(left.v * r.v, left.unit || r.unit)
+      left = val(left.v * r.v, productUnit(left, r, this.ctx.rates))
     } else {
       return left
     }

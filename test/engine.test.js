@@ -405,3 +405,16 @@ test("x colours as an operator where it multiplies", () => {
   assert.deepEqual(cls("3x4"), ["op"])
   assert.deepEqual(cls("3 x 4", { x: { v: 5 } }), ["name"])
 })
+
+// Money wins a product, whichever side it is on.
+test("units: money times another unit is money, in either order", () => {
+  const d = s => Engine.evaluateSheet(s).lines.map(l => l.display)
+  assert.deepEqual(d("hourly_rate = 75 €\ninterview = 6 hours\ninterview * hourly_rate\nhourly_rate * interview"),
+    [`75${T}EUR`, `6${T}h`, `450${T}EUR`, `450${T}EUR`])
+  assert.deepEqual(d("1.5hour * 75€"), [`112.5${T}EUR`])
+  assert.deepEqual(d("6 h x 75 eur"), [`450${T}EUR`])
+  assert.deepEqual(d("10 km * 2 usd"), [`20${T}USD`])
+  assert.deepEqual(d("450 € / 6 hours"), [`75${T}EUR`])
+  assert.deepEqual(d("2 km * 3 kg"), [`6${T}km`])
+  assert.deepEqual(d("3 eur * 2 usd"), [`6${T}EUR`])
+})
